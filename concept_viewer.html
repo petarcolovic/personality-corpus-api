@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Personality Corpus – Concept Viewer</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+            background: #f5f5f5;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        label {
+            margin-right: 8px;
+        }
+        select, input, button {
+            padding: 6px 8px;
+            font-size: 14px;
+            margin-right: 8px;
+        }
+        #controls {
+            margin-bottom: 20px;
+        }
+        #results {
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+        }
+        table th, table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        th {
+            background: #eee;
+        }
+        .lang-title {
+            font-size: 18px;
+            margin-top: 18px;
+            color: #333;
+        }
+        .small {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+
+</head>
+<body>
+
+<h1>Personality Corpus – Concept Viewer</h1>
+
+<div id="controls">
+    <div>
+        <label for="kernelSelect">Kernel word:</label>
+        <select id="kernelSelect">
+            <option value="">Loading kernel words...</option>
+        </select>
+
+        <label for="langSelect">Language:</label>
+        <select id="langSelect">
+            <option value="">All languages</option>
+        </select>
+
+        <button onclick="loadConcept()">Search</button>
+    </div>
+
+    <div class="small" style="margin-top: 6px;">
+        Tip: kernel list is loaded from the API (/kernels). Language list is loaded from /languages.
+    </div>
+</div>
+
+<div id="results"></div>
+
+<script>
+const API_BASE = "http://127.0.0.1:8000";   // change later to your online URL
+
+// Load kernels and languages when page loads
+window.addEventListener("DOMContentLoaded", () => {
+    loadKernels();
+    loadLanguages();
+});
+
+async function loadKernels() {
+    const kernelSelect = document.getElementById("kernelSelect");
+    kernelSelect.innerHTML = "<option>Loading...</option>";
+
+    try {
+        // You can tweak min_count if the list is too long
+        const res = await fetch(`${API_BASE}/kernels?min_count=1`);
+        if (!res.ok) {
+            kernelSelect.innerHTML = "<option value=''>Error loading kernels</option>";
+            return;
+        }
+        const data = await res.json();
+
+        if (!data.length) {
+            kernelSelect.innerHTML = "<option value=''>No kernel words found</option>";
+            return;
+        }
+
+        kernelSelect.innerHTML = "";
+        kernelSelect.appendChild(new Option("Select kernel word...", "", true, false));
+
+        data.forEach(item => {
+            const label = `${item.kernel_word} (${item.n_lemmas})`;
+            const opt = new Option(label, item.kernel_word);
+            kernelSelect.appendChild(opt);
+        });
+    } catch (err) {
+        console.error(err);
+        kernelSelect.innerHTML = "<option value=''>Error loading kernels</option>";
+    }
+}
+
+async function loadLanguages() {
+    const langSelect = document.getElementById("langSelect");
+
+    try {
+        const res = await fetch(`${API_BASE}/languages`);
+        if (!res.ok) {
+            // keep default "All languages" only
+            return;
+        }
+        const data = await res.json();
+
+        data.forEach(lang => {
+            const label = `${lang.name} (${lang.prefix})`;
+            const opt = new Option(label, lang.prefix);
+            langSelect.appendChild(opt);
+        });
+    } catch (err) {
+        console.error(err);
+        // ignore, we still have "All languages"
+    }
+}
+
+async function loadConcept() {
+    const kernelSelect = document.getElementById("kernelSelect");
+    const langSelect = document.getElementById("langSelect");
+    const resultsDiv = document.getElementById("results");
+
+    const kw = kernelSelect.value;
+    const langPrefix = langSelect.value;
+
+    if (!kw) {
+        resultsDiv.innerHTML = "<p>Please select a kernel word.</p>";
+        return;
+    }
+
+    let url = `${API_BASE}/concepts/by_kernel/${encodeURIComponent(kw)}`;
+    if (langPrefix) {
+        url += `?lang_prefix=${encodeURIComponent(langPrefix)}`;
+    }
+
+    resultsDiv.innerHTML = "<p>Loading...</p>";
+
+    try {
+        const res = await fetch(url);
+        if (!res.ok) {
+            if (res.status === 404) {
+                resultsDiv.innerHTML = "<p>No lemmas found for this kernel word.</p>";
+            } else {
+                resultsDiv.innerHTML = `<p>Error: ${res.status}</p>`;
+            }
+            return;
+        }
+
+        const data = await res.json();
+
+        let html = `
+            <h2>Kernel word: <b>${data.kernel_word}</b></h2>
+            <p>Total lemmas: ${data.total_lemmas}</p>
+        `;
+
+        if (!data.languages || !data.languages.length) {
+            html += "<p>No languages found.</p>";
+            resultsDiv.innerHTML = html;
+            return;
+        }
+
+        data.languages.forEach(lang => {
+            html += `
+                <div class="lang-title">
+                    ${lang.language.name} (${lang.language.prefix})
+                </div>
+                <table>
+                    <tr>
+                        <th>Original Word</th>
+                        <th>English</th>
+                        <th>Definition</th>
+                    </tr>
+            `;
+
+            lang.lemmas.forEach(l => {
+                html += `
+                    <tr>
+                        <td>${escapeHtml(l.word_original)}</td>
+                        <td>${escapeHtml(l.word_en)}</td>
+                        <td>${escapeHtml(l.definition || "")}</td>
+                    </tr>
+                `;
+            });
+
+            html += `</table>`;
+        });
+
+        resultsDiv.innerHTML = html;
+
+    } catch (err) {
+        console.error(err);
+        resultsDiv.innerHTML = `<p style="color:red;">Error connecting to API.</p>`;
+    }
+}
+
+// Simple HTML escaping to avoid issues if there are special characters
+function escapeHtml(text) {
+    if (!text) return "";
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+</script>
+
+</body>
+</html>
