@@ -1,11 +1,10 @@
 from typing import Optional
-
 from fastapi import FastAPI, Query, HTTPException
 from psycopg2.extras import RealDictCursor
 
 from database import get_db
 
-from collections import defaultdict
+import math
 
 app = FastAPI(title="Corpus API")
 
@@ -19,6 +18,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ---------- ROOT ENDPOINT ----------
+
+
+@app.get("/")
+def root():
+    """Simple health-check endpoint.
+
+    Returns a short message and a link to the interactive docs.
+    """
+    return {
+        "message": "Personality Corpus API is running.",
+        "docs_url": "/docs"
+    }
 
 
 # ---------- HELPER FUNCTION ----------
@@ -51,13 +65,13 @@ def row_to_lemma(row: dict) -> dict:
 @app.get("/languages")
 def list_languages():
     """
-    Return the list of all languages from the languages table.
+    Returns list of all languages from the table languages.
     """
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
-                SELECT id, prefix, iso_639_1 AS iso, name
+                SELECT id, prefix, iso_639_1 AS iso, name, notes
                 FROM languages
                 ORDER BY name;
                 """
@@ -76,43 +90,38 @@ def search_lemmas(
     ),
     search: Optional[str] = Query(
         None,
-        description=(
-            "General search – looks in word_original, word_en and definition "
-            "(case-insensitive)."
-        ),
+        description="General search – looks in word_original, word_en and definition",
     ),
     word_original: Optional[str] = Query(
         None,
-        description="Search by original word (ILIKE '%...%').",
+        description="Search by original word (ILIKE '%...%')",
     ),
     word_en: Optional[str] = Query(
         None,
-        description="Search by English equivalent (ILIKE '%...%').",
+        description="Search by English equivalent (ILIKE '%...%')",
     ),
     kernel_word: Optional[str] = Query(
         None,
-        description="Search by kernel_word (ILIKE '%...%').",
+        description="Filtering by kernel_word (exact or partial match)",
     ),
     definition: Optional[str] = Query(
         None,
-        description="Search in definition (definition ILIKE '%...%').",
+        description="Search in definitions (examples.definition ILIKE '%...%')",
     ),
     word_type: Optional[str] = Query(
         None,
-        description="Word type, e.g., 'adjective', 'noun', 'verb'...",
+        description="Word type, e.g. 'adjective', 'noun', 'verb'...",
     ),
     sort_by: str = Query(
         "lemma_id",
-        description="Sort field: lemma_id, word_original, word_en, frequency.",
+        description="Sorting field: lemma_id, word_original, word_en, frequency",
     ),
     sort_dir: str = Query(
         "asc",
-        description="Sort direction: 'asc' or 'desc'.",
+        description="Sort direction: 'asc' or 'desc'",
     ),
-    page: int = Query(1, ge=1, description="Page number (starts from 1)."),
-    page_size: int = Query(
-        20, ge=1, le=100, description="Number of results per page."
-    ),
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    page_size: int = Query(20, ge=1, le=100, description="Results per page"),
 ):
     """
     Advanced search over the view lemma_with_example.
@@ -127,7 +136,7 @@ def search_lemmas(
 
     offset = (page - 1) * page_size
 
-    # Build WHERE clause dynamically
+    # ---- build WHERE clause
     where_clauses = []
     params = []
 
@@ -166,7 +175,7 @@ def search_lemmas(
     if where_clauses:
         where_sql = "WHERE " + " AND ".join(where_clauses)
 
-    # Sorting – allowed columns
+    # ---- allowed sort columns
     sort_map = {
         "lemma_id": "lemma_id",
         "word_original": "word_original",
@@ -179,14 +188,14 @@ def search_lemmas(
     if sort_dir.lower() == "desc":
         sort_direction = "DESC"
 
-    # SQL for total count
+    # ---- SQL for counting (total)
     count_sql = f"""
         SELECT COUNT(*) AS total
         FROM lemma_with_example
         {where_sql};
     """
 
-    # SQL for list of results
+    # ---- SQL for list of results
     list_sql = f"""
         SELECT
             lemma_id,
@@ -210,19 +219,22 @@ def search_lemmas(
 
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            # total count
+            # first total
             cur.execute(count_sql, params)
             total_row = cur.fetchone()
             total = total_row["total"] if total_row else 0
 
-            # result rows
+            # then results
             cur.execute(list_sql, list_params)
             rows = cur.fetchall()
+
+    total_pages = math.ceil(total / page_size) if page_size else 1
 
     return {
         "page": page,
         "page_size": page_size,
         "total": total,
+        "total_pages": total_pages,
         "results": [row_to_lemma(r) for r in rows],
     }
 
@@ -233,7 +245,7 @@ def search_lemmas(
 @app.get("/lemmas/{lemma_id}")
 def get_lemma(lemma_id: int):
     """
-    Return a single lemma by ID (with definition, if available).
+    Returns one lemma by ID (with definition, if there is one).
     """
 
     sql = """
@@ -264,129 +276,26 @@ def get_lemma(lemma_id: int):
     return row_to_lemma(row)
 
 
-
-# ---------- ENDPOINT: /lemmas/{lemma_id}/concept ----------
-
-
-@app.get("/lemmas/{lemma_id}/concept")
-def lemma_concept(lemma_id: int):
-    """
-    Given a lemma_id, return the "concept view":
-    all lemmas that share its kernel_word, grouped by language.
-    """
-
-    # 1) Find the lemma and its kernel_word
-    sql_lemma = """
-        SELECT
-            lemma_id,
-            lang_prefix,
-            lang_iso,
-            lang_name,
-            word_original,
-            word_en,
-            kernel_word,
-            word_type,
-            frequency,
-            alternative_comment,
-            definition
-        FROM lemma_with_example
-        WHERE lemma_id = %s;
-    """
-
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(sql_lemma, (lemma_id,))
-            lemma_row = cur.fetchone()
-
-            if not lemma_row:
-                raise HTTPException(status_code=404, detail="Lemma not found")
-
-            kernel_word = lemma_row["kernel_word"]
-
-            if not kernel_word:
-                raise HTTPException(
-                    status_code=400,
-                    detail="This lemma has no kernel_word defined, cannot build concept.",
-                )
-
-            # 2) Fetch all lemmas with the same kernel_word
-            sql_all = """
-                SELECT
-                    lemma_id,
-                    lang_prefix,
-                    lang_iso,
-                    lang_name,
-                    word_original,
-                    word_en,
-                    kernel_word,
-                    word_type,
-                    frequency,
-                    alternative_comment,
-                    definition
-                FROM lemma_with_example
-                WHERE kernel_word = %s
-                ORDER BY lang_name, word_original;
-            """
-            cur.execute(sql_all, (kernel_word,))
-            rows = cur.fetchall()
-
-    # Group by language
-    grouped = {}
-    for r in rows:
-        prefix = r["lang_prefix"]
-        if prefix not in grouped:
-            grouped[prefix] = {
-                "language": {
-                    "prefix": prefix,
-                    "iso": r["lang_iso"],
-                    "name": r["lang_name"],
-                },
-                "lemmas": [],
-            }
-
-        grouped[prefix]["lemmas"].append(
-            {
-                "lemma_id": r["lemma_id"],
-                "word_original": r["word_original"],
-                "word_en": r["word_en"],
-                "word_type": r["word_type"],
-                "frequency": r["frequency"],
-                "alternative_comment": r["alternative_comment"],
-                "definition": r["definition"],
-            }
-        )
-
-    return {
-        "focus_lemma_id": lemma_id,
-        "kernel_word": kernel_word,
-        "total_lemmas": len(rows),
-        "languages": list(grouped.values()),
-    }
-
-
-
 # ---------- ENDPOINT: /kernels ----------
 
 
 @app.get("/kernels")
 def list_kernels(
     lang_prefix: Optional[str] = Query(
-        None, description="Filter by language prefix (e.g., SERB)."
+        None, description="Filtering by language prefix (e.g., SERB)"
     ),
     word_type: Optional[str] = Query(
-        None, description="Word type (adjective, noun, verb...)."
+        None, description="Word type (adjective, noun, verb...)"
     ),
     min_count: int = Query(
-        1, ge=1, description="Minimum number of lemmas per kernel_word."
+        1, ge=1, description="Minimum number of lemmas per kernel_word"
     ),
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    page_size: int = Query(50, ge=1, le=200, description="Results per page"),
 ):
     """
-    Return a list of kernel_word values with the number of lemmas using each.
-
-    Optional filters:
-    - lang_prefix
-    - word_type
-    - min_count
+    Returns a list of kernel_word values with counts of lemmas that have them.
+    Optional filters: lang_prefix, word_type, min_count.
     """
 
     where_clauses = ["kernel_word IS NOT NULL"]
@@ -404,7 +313,23 @@ def list_kernels(
     if where_clauses:
         where_sql = "WHERE " + " AND ".join(where_clauses)
 
-    sql = f"""
+    # count
+    count_sql = f"""
+        SELECT COUNT(*) AS total
+        FROM (
+            SELECT kernel_word
+            FROM lemma_with_example
+            {where_sql}
+            GROUP BY kernel_word
+            HAVING COUNT(*) >= %s
+        ) sub;
+    """
+
+    params_for_count = params + [min_count]
+
+    # list (with pagination)
+    offset = (page - 1) * page_size
+    list_sql = f"""
         SELECT
             kernel_word,
             COUNT(*) AS n_lemmas
@@ -412,17 +337,30 @@ def list_kernels(
         {where_sql}
         GROUP BY kernel_word
         HAVING COUNT(*) >= %s
-        ORDER BY n_lemmas DESC, kernel_word ASC;
+        ORDER BY n_lemmas DESC, kernel_word ASC
+        LIMIT %s OFFSET %s;
     """
 
-    params.append(min_count)
+    params_for_list = params + [min_count, page_size, offset]
 
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(sql, params)
+            cur.execute(count_sql, params_for_count)
+            total_row = cur.fetchone()
+            total = total_row["total"] if total_row else 0
+
+            cur.execute(list_sql, params_for_list)
             rows = cur.fetchall()
 
-    return rows
+    total_pages = math.ceil(total / page_size) if page_size else 1
+
+    return {
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "results": rows,
+    }
 
 
 # ---------- ENDPOINT: /lemmas/by_kernel/{kernel_word} ----------
@@ -432,16 +370,14 @@ def list_kernels(
 def lemmas_by_kernel(
     kernel_word: str,
     lang_prefix: Optional[str] = Query(
-        None, description="Filter by language prefix (e.g., SERB)."
+        None, description="Filtering by language prefix (e.g., SERB)"
     ),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
     """
-    Return lemmas that have the given kernel_word.
-
-    Optional filters:
-    - lang_prefix
+    Returns lemmas that have the requested kernel_word.
+    Optional filters: lang_prefix.
     """
 
     offset = (page - 1) * page_size
@@ -491,30 +427,33 @@ def lemmas_by_kernel(
             cur.execute(list_sql, list_params)
             rows = cur.fetchall()
 
+    total_pages = math.ceil(total / page_size) if page_size else 1
+
     return {
         "kernel_word": kernel_word,
         "lang_prefix": lang_prefix,
         "page": page,
         "page_size": page_size,
         "total": total,
+        "total_pages": total_pages,
         "results": [row_to_lemma(r) for r in rows],
     }
 
 
-# ---------- ENDPOINT: /definitions/search ----------
+#------------ ENDPOINT: definitions search ------------
 
 
 @app.get("/definitions/search")
 def search_definitions(
-    q: str = Query(..., description="Text to search in definitions."),
+    q: str = Query(..., description="Text to search in definitions"),
     lang_prefix: Optional[str] = Query(
-        None, description="Optional language prefix (e.g., SERB, POL...)."
+        None, description="Optional language prefix (SERB, POL...)"
     ),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
     """
-    Search in definitions (definition ILIKE '%q%').
+    Definition search (definition ILIKE '%q%').
     """
 
     offset = (page - 1) * page_size
@@ -564,17 +503,20 @@ def search_definitions(
             cur.execute(list_sql, list_params)
             rows = cur.fetchall()
 
+    total_pages = math.ceil(total / page_size) if page_size else 1
+
     return {
         "query": q,
         "lang_prefix": lang_prefix,
         "page": page,
         "page_size": page_size,
         "total": total,
+        "total_pages": total_pages,
         "results": [row_to_lemma(r) for r in rows],
     }
 
 
-# ---------- ENDPOINT: /languages/{lang_prefix}/lemmas ----------
+# ---------- ENDPOINT: lemmas for one language ---------
 
 
 @app.get("/languages/{lang_prefix}/lemmas")
@@ -583,12 +525,12 @@ def lemmas_by_language(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     word_type: Optional[str] = Query(
-        None, description="Word type, e.g., 'adjective'."
+        None, description="Word type, e.g. adjective"
     ),
 ):
     """
-    Return lemmas for the given language (by lang_prefix),
-    with an optional filter by word_type.
+    Lemmas for the requested language (by lang_prefix),
+    with optional filtering by word_type.
     """
 
     offset = (page - 1) * page_size
@@ -638,108 +580,28 @@ def lemmas_by_language(
             cur.execute(list_sql, list_params)
             rows = cur.fetchall()
 
+    total_pages = math.ceil(total / page_size) if page_size else 1
+
     return {
         "lang_prefix": lang_prefix,
         "word_type": word_type,
         "page": page,
         "page_size": page_size,
         "total": total,
+        "total_pages": total_pages,
         "results": [row_to_lemma(r) for r in rows],
     }
 
 
-# ---------- ENDPOINT: /concepts/by_kernel/{kernel_word} ----------
-
-
-@app.get("/concepts/by_kernel/{kernel_word}")
-def concept_by_kernel(
-    kernel_word: str,
-    lang_prefix: Optional[str] = Query(
-        None, description="Optional language prefix filter (e.g., SERB)."
-    ),
-):
-    """
-    Return a "concept view" for a given kernel_word:
-    all lemmas that share this kernel_word, grouped by language.
-    """
-
-    where_clauses = ["kernel_word = %s"]
-    params = [kernel_word]
-
-    if lang_prefix:
-        where_clauses.append("lang_prefix = %s")
-        params.append(lang_prefix)
-
-    where_sql = "WHERE " + " AND ".join(where_clauses)
-
-    sql = f"""
-        SELECT
-            lemma_id,
-            lang_prefix,
-            lang_iso,
-            lang_name,
-            word_original,
-            word_en,
-            kernel_word,
-            word_type,
-            frequency,
-            alternative_comment,
-            definition
-        FROM lemma_with_example
-        {where_sql}
-        ORDER BY lang_name, word_original;
-    """
-
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(sql, params)
-            rows = cur.fetchall()
-
-    if not rows:
-        raise HTTPException(status_code=404, detail="No lemmas found for this kernel_word")
-
-    # Group by language
-    grouped = {}
-    for r in rows:
-        prefix = r["lang_prefix"]
-        if prefix not in grouped:
-            grouped[prefix] = {
-                "language": {
-                    "prefix": prefix,
-                    "iso": r["lang_iso"],
-                    "name": r["lang_name"],
-                },
-                "lemmas": [],
-            }
-
-        grouped[prefix]["lemmas"].append(
-            {
-                "lemma_id": r["lemma_id"],
-                "word_original": r["word_original"],
-                "word_en": r["word_en"],
-                "word_type": r["word_type"],
-                "frequency": r["frequency"],
-                "alternative_comment": r["alternative_comment"],
-                "definition": r["definition"],
-            }
-        )
-
-    return {
-        "kernel_word": kernel_word,
-        "lang_prefix": lang_prefix,
-        "total_lemmas": len(rows),
-        "languages": list(grouped.values()),
-    }
-
-
-# ---------- ENDPOINT: /stats/languages ----------
+# ---------- SIMPLE STATS (FULL) ----------
 
 
 @app.get("/stats/languages")
 def stats_languages():
     """
-    Return the number of lemmas per language.
+    Number of lemmas per language (non-paginated).
     """
+
     sql = """
         SELECT
             lang.name AS language,
@@ -757,3 +619,61 @@ def stats_languages():
             rows = cur.fetchall()
 
     return rows
+
+
+# ---------- PAGINATED STATS /stats/languages_paged ----------
+
+
+@app.get("/stats/languages_paged")
+def stats_languages_paged(
+    page: int = Query(1, ge=1, description="Page number (starts at 1)"),
+    page_size: int = Query(50, ge=1, le=200, description="Results per page"),
+):
+    """
+    Paginirana statistika: broj lema po jeziku.
+
+    Koristi istu logiku kao /stats/languages, ali vraća:
+    - total: ukupan broj jezika
+    - total_pages: ukupan broj strana
+    - page, page_size
+    - results: lista jezika za traženu stranu
+    """
+
+    offset = (page - 1) * page_size
+
+    count_sql = """
+        SELECT COUNT(DISTINCT lang.id) AS total_languages
+        FROM lemmas l
+        JOIN languages lang ON l.language_id = lang.id;
+    """
+
+    list_sql = """
+        SELECT
+            lang.name AS language,
+            lang.iso_639_1 AS iso,
+            COUNT(l.id) AS n_lemmas
+        FROM lemmas l
+        JOIN languages lang ON l.language_id = lang.id
+        GROUP BY lang.name, lang.iso_639_1
+        ORDER BY n_lemmas DESC
+        LIMIT %s OFFSET %s;
+    """
+
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(count_sql)
+            row = cur.fetchone()
+            total = row["total_languages"] if row else 0
+
+            cur.execute(list_sql, (page_size, offset))
+            rows = cur.fetchall()
+
+    total_pages = math.ceil(total / page_size) if page_size else 1
+
+    return {
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "results": rows,
+    }
