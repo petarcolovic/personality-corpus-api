@@ -16,9 +16,7 @@
       --danger: #b91c1c;
       --radius-lg: 16px;
     }
-
     * { box-sizing: border-box; }
-
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -26,13 +24,11 @@
       color: var(--text);
       min-height: 100vh;
     }
-
     .page {
       max-width: 1100px;
       margin: 0 auto;
       padding: 32px 16px 48px;
     }
-
     header {
       display: flex;
       flex-wrap: wrap;
@@ -40,18 +36,15 @@
       gap: 8px 16px;
       margin-bottom: 24px;
     }
-
     header h1 {
       font-size: 1.8rem;
       margin: 0;
       font-weight: 650;
     }
-
     header span {
       color: var(--text-soft);
       font-size: 0.95rem;
     }
-
     .panel {
       background: rgba(255, 255, 255, 0.85);
       border-radius: var(--radius-lg);
@@ -61,14 +54,12 @@
       padding: 20px 20px 16px;
       backdrop-filter: blur(12px);
     }
-
     .filters {
       display: grid;
       grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) auto;
       gap: 12px;
       align-items: end;
     }
-
     label {
       display: block;
       font-size: 0.8rem;
@@ -77,7 +68,6 @@
       color: var(--text-soft);
       margin-bottom: 4px;
     }
-
     select, button {
       width: 100%;
       height: 38px;
@@ -89,12 +79,10 @@
       color: var(--text);
       outline: none;
     }
-
     select:focus, button:focus-visible {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px var(--accent-soft);
     }
-
     button {
       background: var(--accent);
       color: #fff;
@@ -103,37 +91,26 @@
       cursor: pointer;
       white-space: nowrap;
     }
-
     button:disabled {
       opacity: 0.6;
       cursor: default;
     }
-
     .hint {
       margin-top: 8px;
       font-size: 0.78rem;
       color: var(--text-soft);
     }
-
     .status {
       margin-top: 10px;
       font-size: 0.85rem;
       color: var(--text-soft);
     }
-
-    .status strong { color: var(--text); }
-
     .status.error { color: var(--danger); }
-
-    .results {
-      margin-top: 20px;
-    }
-
+    .results { margin-top: 20px; }
     .kernel-header {
       font-weight: 600;
       margin-bottom: 6px;
     }
-
     .language-group {
       background: var(--card-bg);
       border-radius: 12px;
@@ -141,7 +118,6 @@
       margin-bottom: 10px;
       overflow: hidden;
     }
-
     .language-header {
       display: flex;
       justify-content: space-between;
@@ -150,28 +126,23 @@
       background: #f9fafb;
       border-bottom: 1px solid var(--border);
     }
-
     .language-header .name {
       font-weight: 600;
     }
-
     .language-header .meta {
       font-size: 0.8rem;
       color: var(--text-soft);
     }
-
     table {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.88rem;
     }
-
     th, td {
       padding: 8px 12px;
       border-bottom: 1px solid #f1f5f9;
       vertical-align: top;
     }
-
     th {
       background: #ffffff;
       text-align: left;
@@ -181,28 +152,20 @@
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
-
-    tr:last-child td {
-      border-bottom: none;
-    }
-
+    tr:last-child td { border-bottom: none; }
     .empty {
       padding: 10px 0 4px;
       font-size: 0.9rem;
       color: var(--text-soft);
     }
-
     .footer-note {
       margin-top: 32px;
       font-size: 0.8rem;
       color: var(--text-soft);
       text-align: right;
     }
-
     @media (max-width: 768px) {
-      .filters {
-        grid-template-columns: minmax(0, 1fr);
-      }
+      .filters { grid-template-columns: minmax(0, 1fr); }
     }
   </style>
 </head>
@@ -232,12 +195,11 @@
     </div>
 
     <div class="hint">
-      Kernels are loaded from <code>/kernels</code>. Languages are loaded from <code>/languages</code>.
+      Kernels are loaded from <code>/kernels/paged</code>. Languages are loaded from <code>/languages</code>.
       Data per kernel comes from <code>/lemmas/by_kernel/&lt;kernel_word&gt;</code>.
     </div>
 
     <div id="status" class="status"></div>
-
     <div id="results" class="results"></div>
 
     <div class="footer-note">
@@ -247,12 +209,8 @@
 </div>
 
 <script>
-  // ======= CONFIG: where is the API? =======
-  // Production (Railway):
   const API_BASE = "https://personality-corpus-api-production.up.railway.app";
 
-  // Ako želiš lokalno:
-  // const API_BASE = "https://personality-corpus-api-production.up.railway.app";
   const kernelSelect = document.getElementById("kernelSelect");
   const languageSelect = document.getElementById("languageSelect");
   const searchBtn = document.getElementById("searchBtn");
@@ -271,13 +229,17 @@
     return opt;
   }
 
+  // --------------------------
+  //   FIX: use kernels/paged
+  // --------------------------
+
   async function loadFilters() {
     try {
       setStatus("Loading kernels and languages…");
       searchBtn.disabled = true;
 
       const [kernelsRes, langsRes] = await Promise.all([
-        fetch(`${API_BASE}/kernels/paged?page=1&page_size=1000&min_count=1`),
+        fetch(`${API_BASE}/kernels/paged?page=1&page_size=500`),
         fetch(`${API_BASE}/languages`)
       ]);
 
@@ -288,34 +250,27 @@
       const kernelsJson = await kernelsRes.json();
       const langs = await langsRes.json();
 
-      const kernels = Array.isArray(kernelsJson.results)
-        ? kernelsJson.results
-        : kernelsJson; // fallback ako endpoint vrati plain listu
+      // Always expect paginated form:
+      const kernels = kernelsJson.results || [];
 
-      // Popuni kernel dropdown
       kernelSelect.innerHTML = "";
       kernels.forEach(k => {
-        const kw = k.kernel_word || k.kernel || k.word;
-        const count = k.n_lemmas ?? k.count ?? "";
-        const label = count ? `${kw} (${count})` : kw;
+        const kw = k.kernel_word;
+        const label = `${kw} (${k.n_lemmas})`;
         kernelSelect.appendChild(createOption(kw, label));
       });
 
-      // Popuni language dropdown
       languageSelect.innerHTML = "";
       languageSelect.appendChild(createOption("ALL", "All languages"));
       langs.forEach(l => {
-        const label = `${l.name} (${l.prefix})`;
-        languageSelect.appendChild(createOption(l.prefix, label));
+        languageSelect.appendChild(createOption(l.prefix, `${l.name} (${l.prefix})`));
       });
 
-      setStatus("Filters loaded. Choose a kernel and press Search.");
+      setStatus("Filters loaded. Choose a kernel.");
       searchBtn.disabled = false;
 
-      // automatski prikaži prvi kernel
-      if (kernels.length > 0) {
-        await loadConcept();
-      }
+      if (kernels.length > 0) loadConcept();
+
     } catch (err) {
       console.error(err);
       setStatus("Error loading filters: " + err.message, true);
@@ -333,25 +288,21 @@
     }
 
     try {
-      setStatus("Loading data for kernel: " + kernel + " …");
+      setStatus("Loading data…");
       searchBtn.disabled = true;
       resultsEl.innerHTML = "";
 
-      let url = `${API_BASE}/lemmas/by_kernel/${encodeURIComponent(kernel)}?page=1&page_size=500`;
-      if (langPrefix && langPrefix !== "ALL") {
-        url += `&lang_prefix=${encodeURIComponent(langPrefix)}`;
-      }
+      let url = `${API_BASE}/lemmas/by_kernel/${encodeURIComponent(kernel)}?page=1&page_size=1000`;
+      if (langPrefix !== "ALL") url += `&lang_prefix=${langPrefix}`;
 
       const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`API error: ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`API error ${res.status}`);
 
       const json = await res.json();
-      const lemmas = Array.isArray(json.results) ? json.results : json;
+      const lemmas = json.results || [];
+      renderResults(kernel, lemmas, json.total || lemmas.length);
 
-      renderResults(kernel, lemmas, json.total ?? lemmas.length);
-      setStatus(`Loaded ${lemmas.length} lemmas for kernel "${kernel}".`);
+      setStatus(`Loaded ${lemmas.length} lemmas.`);
     } catch (err) {
       console.error(err);
       setStatus("Error loading lemmas: " + err.message, true);
@@ -362,91 +313,54 @@
 
   function renderResults(kernel, lemmas, total) {
     resultsEl.innerHTML = "";
-
-    const header = document.createElement("div");
-    header.className = "kernel-header";
-    header.textContent = `Kernel word: ${kernel} · Total lemmas: ${total}`;
-    resultsEl.appendChild(header);
+    const h = document.createElement("div");
+    h.className = "kernel-header";
+    h.textContent = `Kernel word: ${kernel} · Total lemmas: ${total}`;
+    resultsEl.appendChild(h);
 
     if (!lemmas.length) {
-      const empty = document.createElement("div");
-      empty.className = "empty";
-      empty.textContent = "No lemmas found for this kernel / filter.";
-      resultsEl.appendChild(empty);
+      resultsEl.innerHTML += `<div class="empty">No lemmas found.</div>`;
       return;
     }
 
-    // Grupisanje po jeziku
-    const byLang = new Map();
-    for (const lemma of lemmas) {
-      const lang = lemma.language || {};
-      const key = lang.prefix || "???";
-      if (!byLang.has(key)) {
-        byLang.set(key, { lang, lemmas: [] });
-      }
-      byLang.get(key).lemmas.push(lemma);
+    const groups = {};
+    for (const l of lemmas) {
+      const p = l.language.prefix;
+      if (!groups[p]) groups[p] = [];
+      groups[p].push(l);
     }
 
-    const groups = Array.from(byLang.values())
-      .sort((a, b) => (a.lang.name || "").localeCompare(b.lang.name || ""));
+    Object.entries(groups).forEach(([prefix, list]) => {
+      const first = list[0];
+      const group = document.createElement("div");
+      group.className = "language-group";
 
-    for (const group of groups) {
-      const langName = group.lang.name || "Unknown";
-      const langPrefix = group.lang.prefix || "";
-      const langIso = group.lang.iso || group.lang.iso_639_1 || "";
+      group.innerHTML = `
+        <div class="language-header">
+          <div class="name">${first.language.name} (${prefix})</div>
+          <div class="meta">Lemmas: ${list.length}</div>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Original</th><th>English</th><th>Definition</th></tr>
+          </thead>
+          <tbody>
+            ${list.map(l => `
+              <tr>
+                <td>${l.word_original}</td>
+                <td>${l.word_en}</td>
+                <td>${l.definition || ""}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      `;
 
-      const wrapper = document.createElement("div");
-      wrapper.className = "language-group";
-
-      const header = document.createElement("div");
-      header.className = "language-header";
-      const nameEl = document.createElement("div");
-      nameEl.className = "name";
-      nameEl.textContent = `${langName} (${langPrefix})`;
-      const metaEl = document.createElement("div");
-      metaEl.className = "meta";
-      metaEl.textContent = `ISO: ${langIso || "–"} · Lemmas: ${group.lemmas.length}`;
-      header.appendChild(nameEl);
-      header.appendChild(metaEl);
-
-      const table = document.createElement("table");
-      const thead = document.createElement("thead");
-      thead.innerHTML = `
-        <tr>
-          <th>Original word</th>
-          <th>English</th>
-          <th>Definition</th>
-        </tr>`;
-      table.appendChild(thead);
-
-      const tbody = document.createElement("tbody");
-      group.lemmas.forEach(l => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${escapeHtml(l.word_original || "")}</td>
-          <td>${escapeHtml(l.word_en || "")}</td>
-          <td>${escapeHtml(l.definition || "")}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-      table.appendChild(tbody);
-
-      wrapper.appendChild(header);
-      wrapper.appendChild(table);
-      resultsEl.appendChild(wrapper);
-    }
-  }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+      resultsEl.appendChild(group);
+    });
   }
 
   searchBtn.addEventListener("click", loadConcept);
 
-  // inicijalno učitavanje
   loadFilters();
 </script>
 </body>
