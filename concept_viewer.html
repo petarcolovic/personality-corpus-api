@@ -1,235 +1,453 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Personality Corpus – Concept Viewer</title>
+  <meta charset="UTF-8" />
+  <title>Personality Corpus – Concept Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card-bg: #ffffff;
+      --accent: #2563eb;
+      --accent-soft: #e0edff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --text-soft: #6b7280;
+      --danger: #b91c1c;
+      --radius-lg: 16px;
+    }
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 30px;
-            background: #f5f5f5;
-        }
-        h1 {
-            margin-bottom: 20px;
-        }
-        label {
-            margin-right: 8px;
-        }
-        select, input, button {
-            padding: 6px 8px;
-            font-size: 14px;
-            margin-right: 8px;
-        }
-        #controls {
-            margin-bottom: 20px;
-        }
-        #results {
-            margin-top: 30px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-            background: white;
-        }
-        table th, table td {
-            padding: 10px;
-            border: 1px solid #ddd;
-        }
-        th {
-            background: #eee;
-        }
-        .lang-title {
-            font-size: 18px;
-            margin-top: 18px;
-            color: #333;
-        }
-        .small {
-            font-size: 12px;
-            color: #666;
-        }
-    </style>
+    * { box-sizing: border-box; }
 
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #e0edff 0, #f5f5f7 55%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 16px 48px;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 8px 16px;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      margin: 0;
+      font-weight: 650;
+    }
+
+    header span {
+      color: var(--text-soft);
+      font-size: 0.95rem;
+    }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: var(--radius-lg);
+      box-shadow:
+        0 18px 45px rgba(15,23,42,0.08),
+        0 0 0 1px rgba(148,163,184,0.25);
+      padding: 20px 20px 16px;
+      backdrop-filter: blur(12px);
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-soft);
+      margin-bottom: 4px;
+    }
+
+    select, button {
+      width: 100%;
+      height: 38px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      padding: 0 14px;
+      font-size: 0.9rem;
+      background: #ffffff;
+      color: var(--text);
+      outline: none;
+    }
+
+    select:focus, button:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-soft);
+    }
+
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .hint {
+      margin-top: 8px;
+      font-size: 0.78rem;
+      color: var(--text-soft);
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: var(--text-soft);
+    }
+
+    .status strong { color: var(--text); }
+
+    .status.error { color: var(--danger); }
+
+    .results {
+      margin-top: 20px;
+    }
+
+    .kernel-header {
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .language-group {
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    .language-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 10px 14px;
+      background: #f9fafb;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .language-header .name {
+      font-weight: 600;
+    }
+
+    .language-header .meta {
+      font-size: 0.8rem;
+      color: var(--text-soft);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    th, td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: top;
+    }
+
+    th {
+      background: #ffffff;
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-soft);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .empty {
+      padding: 10px 0 4px;
+      font-size: 0.9rem;
+      color: var(--text-soft);
+    }
+
+    .footer-note {
+      margin-top: 32px;
+      font-size: 0.8rem;
+      color: var(--text-soft);
+      text-align: right;
+    }
+
+    @media (max-width: 768px) {
+      .filters {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+  </style>
 </head>
 <body>
+<div class="page">
+  <header>
+    <h1>Personality Corpus – Concept Viewer</h1>
+    <span>Browse lemmas grouped by language for one kernel concept.</span>
+  </header>
 
-<h1>Personality Corpus – Concept Viewer</h1>
-
-<div id="controls">
-    <div>
-        <label for="kernelSelect">Kernel word:</label>
-        <select id="kernelSelect">
-            <option value="">Loading kernel words...</option>
+  <section class="panel">
+    <div class="filters">
+      <div>
+        <label for="kernelSelect">Kernel word</label>
+        <select id="kernelSelect"></select>
+      </div>
+      <div>
+        <label for="languageSelect">Language</label>
+        <select id="languageSelect">
+          <option value="ALL">All languages</option>
         </select>
-
-        <label for="langSelect">Language:</label>
-        <select id="langSelect">
-            <option value="">All languages</option>
-        </select>
-
-        <button onclick="loadConcept()">Search</button>
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button id="searchBtn">Search</button>
+      </div>
     </div>
 
-    <div class="small" style="margin-top: 6px;">
-        Tip: kernel list is loaded from the API (/kernels). Language list is loaded from /languages.
+    <div class="hint">
+      Kernels are loaded from <code>/kernels</code>. Languages are loaded from <code>/languages</code>.
+      Data per kernel comes from <code>/lemmas/by_kernel/&lt;kernel_word&gt;</code>.
     </div>
+
+    <div id="status" class="status"></div>
+
+    <div id="results" class="results"></div>
+
+    <div class="footer-note">
+      API docs: <a href="https://personality-corpus-api-production.up.railway.app/docs" target="_blank">/docs</a>
+    </div>
+  </section>
 </div>
 
-<div id="results"></div>
-
 <script>
-const API_BASE = "http://127.0.0.1:8000";   // change later to your online URL
+  // ======= CONFIG: where is the API? =======
+  // Production (Railway):
+  const API_BASE = "https://personality-corpus-api-production.up.railway.app";
 
-// Load kernels and languages when page loads
-window.addEventListener("DOMContentLoaded", () => {
-    loadKernels();
-    loadLanguages();
-});
+  // Ako želiš lokalno:
+  // const API_BASE = "https://personality-corpus-api-production.up.railway.app";
+  const kernelSelect = document.getElementById("kernelSelect");
+  const languageSelect = document.getElementById("languageSelect");
+  const searchBtn = document.getElementById("searchBtn");
+  const statusEl = document.getElementById("status");
+  const resultsEl = document.getElementById("results");
 
-async function loadKernels() {
-    const kernelSelect = document.getElementById("kernelSelect");
-    kernelSelect.innerHTML = "<option>Loading...</option>";
+  function setStatus(msg, isError=false) {
+    statusEl.textContent = msg || "";
+    statusEl.className = "status" + (isError ? " error" : "");
+  }
 
+  function createOption(value, label) {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    return opt;
+  }
+
+  async function loadFilters() {
     try {
-        // You can tweak min_count if the list is too long
-        const res = await fetch(`${API_BASE}/kernels?min_count=1`);
-        if (!res.ok) {
-            kernelSelect.innerHTML = "<option value=''>Error loading kernels</option>";
-            return;
-        }
-        const data = await res.json();
+      setStatus("Loading kernels and languages…");
+      searchBtn.disabled = true;
 
-        if (!data.length) {
-            kernelSelect.innerHTML = "<option value=''>No kernel words found</option>";
-            return;
-        }
+      const [kernelsRes, langsRes] = await Promise.all([
+        fetch(`${API_BASE}/kernels/paged?page=1&page_size=1000&min_count=1`),
+        fetch(`${API_BASE}/languages`)
+      ]);
 
-        kernelSelect.innerHTML = "";
-        kernelSelect.appendChild(new Option("Select kernel word...", "", true, false));
+      if (!kernelsRes.ok || !langsRes.ok) {
+        throw new Error("Failed to load kernels or languages.");
+      }
 
-        data.forEach(item => {
-            const label = `${item.kernel_word} (${item.n_lemmas})`;
-            const opt = new Option(label, item.kernel_word);
-            kernelSelect.appendChild(opt);
-        });
+      const kernelsJson = await kernelsRes.json();
+      const langs = await langsRes.json();
+
+      const kernels = Array.isArray(kernelsJson.results)
+        ? kernelsJson.results
+        : kernelsJson; // fallback ako endpoint vrati plain listu
+
+      // Popuni kernel dropdown
+      kernelSelect.innerHTML = "";
+      kernels.forEach(k => {
+        const kw = k.kernel_word || k.kernel || k.word;
+        const count = k.n_lemmas ?? k.count ?? "";
+        const label = count ? `${kw} (${count})` : kw;
+        kernelSelect.appendChild(createOption(kw, label));
+      });
+
+      // Popuni language dropdown
+      languageSelect.innerHTML = "";
+      languageSelect.appendChild(createOption("ALL", "All languages"));
+      langs.forEach(l => {
+        const label = `${l.name} (${l.prefix})`;
+        languageSelect.appendChild(createOption(l.prefix, label));
+      });
+
+      setStatus("Filters loaded. Choose a kernel and press Search.");
+      searchBtn.disabled = false;
+
+      // automatski prikaži prvi kernel
+      if (kernels.length > 0) {
+        await loadConcept();
+      }
     } catch (err) {
-        console.error(err);
-        kernelSelect.innerHTML = "<option value=''>Error loading kernels</option>";
+      console.error(err);
+      setStatus("Error loading filters: " + err.message, true);
+      searchBtn.disabled = false;
     }
-}
+  }
 
-async function loadLanguages() {
-    const langSelect = document.getElementById("langSelect");
+  async function loadConcept() {
+    const kernel = kernelSelect.value;
+    const langPrefix = languageSelect.value;
+
+    if (!kernel) {
+      setStatus("Please choose a kernel word.", true);
+      return;
+    }
 
     try {
-        const res = await fetch(`${API_BASE}/languages`);
-        if (!res.ok) {
-            // keep default "All languages" only
-            return;
-        }
-        const data = await res.json();
+      setStatus("Loading data for kernel: " + kernel + " …");
+      searchBtn.disabled = true;
+      resultsEl.innerHTML = "";
 
-        data.forEach(lang => {
-            const label = `${lang.name} (${lang.prefix})`;
-            const opt = new Option(label, lang.prefix);
-            langSelect.appendChild(opt);
-        });
+      let url = `${API_BASE}/lemmas/by_kernel/${encodeURIComponent(kernel)}?page=1&page_size=500`;
+      if (langPrefix && langPrefix !== "ALL") {
+        url += `&lang_prefix=${encodeURIComponent(langPrefix)}`;
+      }
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`API error: ${res.status}`);
+      }
+
+      const json = await res.json();
+      const lemmas = Array.isArray(json.results) ? json.results : json;
+
+      renderResults(kernel, lemmas, json.total ?? lemmas.length);
+      setStatus(`Loaded ${lemmas.length} lemmas for kernel "${kernel}".`);
     } catch (err) {
-        console.error(err);
-        // ignore, we still have "All languages"
+      console.error(err);
+      setStatus("Error loading lemmas: " + err.message, true);
+    } finally {
+      searchBtn.disabled = false;
     }
-}
+  }
 
-async function loadConcept() {
-    const kernelSelect = document.getElementById("kernelSelect");
-    const langSelect = document.getElementById("langSelect");
-    const resultsDiv = document.getElementById("results");
+  function renderResults(kernel, lemmas, total) {
+    resultsEl.innerHTML = "";
 
-    const kw = kernelSelect.value;
-    const langPrefix = langSelect.value;
+    const header = document.createElement("div");
+    header.className = "kernel-header";
+    header.textContent = `Kernel word: ${kernel} · Total lemmas: ${total}`;
+    resultsEl.appendChild(header);
 
-    if (!kw) {
-        resultsDiv.innerHTML = "<p>Please select a kernel word.</p>";
-        return;
+    if (!lemmas.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "No lemmas found for this kernel / filter.";
+      resultsEl.appendChild(empty);
+      return;
     }
 
-    let url = `${API_BASE}/concepts/by_kernel/${encodeURIComponent(kw)}`;
-    if (langPrefix) {
-        url += `?lang_prefix=${encodeURIComponent(langPrefix)}`;
+    // Grupisanje po jeziku
+    const byLang = new Map();
+    for (const lemma of lemmas) {
+      const lang = lemma.language || {};
+      const key = lang.prefix || "???";
+      if (!byLang.has(key)) {
+        byLang.set(key, { lang, lemmas: [] });
+      }
+      byLang.get(key).lemmas.push(lemma);
     }
 
-    resultsDiv.innerHTML = "<p>Loading...</p>";
+    const groups = Array.from(byLang.values())
+      .sort((a, b) => (a.lang.name || "").localeCompare(b.lang.name || ""));
 
-    try {
-        const res = await fetch(url);
-        if (!res.ok) {
-            if (res.status === 404) {
-                resultsDiv.innerHTML = "<p>No lemmas found for this kernel word.</p>";
-            } else {
-                resultsDiv.innerHTML = `<p>Error: ${res.status}</p>`;
-            }
-            return;
-        }
+    for (const group of groups) {
+      const langName = group.lang.name || "Unknown";
+      const langPrefix = group.lang.prefix || "";
+      const langIso = group.lang.iso || group.lang.iso_639_1 || "";
 
-        const data = await res.json();
+      const wrapper = document.createElement("div");
+      wrapper.className = "language-group";
 
-        let html = `
-            <h2>Kernel word: <b>${data.kernel_word}</b></h2>
-            <p>Total lemmas: ${data.total_lemmas}</p>
+      const header = document.createElement("div");
+      header.className = "language-header";
+      const nameEl = document.createElement("div");
+      nameEl.className = "name";
+      nameEl.textContent = `${langName} (${langPrefix})`;
+      const metaEl = document.createElement("div");
+      metaEl.className = "meta";
+      metaEl.textContent = `ISO: ${langIso || "–"} · Lemmas: ${group.lemmas.length}`;
+      header.appendChild(nameEl);
+      header.appendChild(metaEl);
+
+      const table = document.createElement("table");
+      const thead = document.createElement("thead");
+      thead.innerHTML = `
+        <tr>
+          <th>Original word</th>
+          <th>English</th>
+          <th>Definition</th>
+        </tr>`;
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      group.lemmas.forEach(l => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${escapeHtml(l.word_original || "")}</td>
+          <td>${escapeHtml(l.word_en || "")}</td>
+          <td>${escapeHtml(l.definition || "")}</td>
         `;
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
 
-        if (!data.languages || !data.languages.length) {
-            html += "<p>No languages found.</p>";
-            resultsDiv.innerHTML = html;
-            return;
-        }
-
-        data.languages.forEach(lang => {
-            html += `
-                <div class="lang-title">
-                    ${lang.language.name} (${lang.language.prefix})
-                </div>
-                <table>
-                    <tr>
-                        <th>Original Word</th>
-                        <th>English</th>
-                        <th>Definition</th>
-                    </tr>
-            `;
-
-            lang.lemmas.forEach(l => {
-                html += `
-                    <tr>
-                        <td>${escapeHtml(l.word_original)}</td>
-                        <td>${escapeHtml(l.word_en)}</td>
-                        <td>${escapeHtml(l.definition || "")}</td>
-                    </tr>
-                `;
-            });
-
-            html += `</table>`;
-        });
-
-        resultsDiv.innerHTML = html;
-
-    } catch (err) {
-        console.error(err);
-        resultsDiv.innerHTML = `<p style="color:red;">Error connecting to API.</p>`;
+      wrapper.appendChild(header);
+      wrapper.appendChild(table);
+      resultsEl.appendChild(wrapper);
     }
-}
+  }
 
-// Simple HTML escaping to avoid issues if there are special characters
-function escapeHtml(text) {
-    if (!text) return "";
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  searchBtn.addEventListener("click", loadConcept);
+
+  // inicijalno učitavanje
+  loadFilters();
 </script>
-
 </body>
 </html>
