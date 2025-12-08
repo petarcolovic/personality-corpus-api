@@ -1,24 +1,21 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <title>Personality Corpus – Concept Viewer</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     :root {
       --bg: #f5f7fb;
       --card-bg: #ffffff;
-      --accent: #2563eb;
-      --accent-soft: rgba(37, 99, 235, 0.08);
-      --danger: #dc2626;
-      --text-main: #111827;
-      --text-muted: #6b7280;
-      --border: #e5e7eb;
-      --radius-lg: 18px;
-      --radius-sm: 8px;
+      --primary: #2563eb;
+      --primary-soft: #e0ebff;
+      --border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --danger: #b91c1c;
+      --radius-xl: 16px;
       --shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.08);
-      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
     }
 
     * {
@@ -27,60 +24,61 @@
 
     body {
       margin: 0;
-      font-family: var(--font-sans);
-      background: radial-gradient(circle at top left, #eff6ff 0, #f9fafb 45%, #eef2ff 100%);
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #e0f2fe 0, #f5f7fb 45%, #e2e8f0 100%);
       color: var(--text-main);
+      min-height: 100vh;
     }
 
     .page {
-      min-height: 100vh;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding: 40px 16px;
-    }
-
-    .shell {
-      width: 100%;
       max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
     }
 
-    header {
-      margin-bottom: 18px;
+    .header {
+      margin-bottom: 24px;
     }
 
-    header h1 {
+    .title {
+      font-size: 32px;
+      margin: 0 0 4px;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
       margin: 0;
-      font-size: 28px;
-      font-weight: 750;
-      letter-spacing: -0.03em;
-    }
-
-    header p {
-      margin: 4px 0 0;
-      font-size: 14px;
+      font-size: 15px;
       color: var(--text-muted);
     }
 
     .card {
       background: var(--card-bg);
-      border-radius: var(--radius-lg);
+      border-radius: 24px;
       box-shadow: var(--shadow-soft);
-      padding: 24px 26px 22px;
+      padding: 24px 28px 26px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
     }
 
     .filters-row {
-      display: grid;
-      grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) auto;
-      gap: 14px;
-      align-items: end;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 12px;
+      align-items: flex-end;
+    }
+
+    .field {
+      flex: 1 1 240px;
+      min-width: 0;
     }
 
     .field-label {
+      display: block;
       font-size: 12px;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-weight: 600;
+      letter-spacing: 0.12em;
       color: var(--text-muted);
       margin-bottom: 6px;
     }
@@ -88,511 +86,490 @@
     .select,
     .input {
       width: 100%;
+      padding: 10px 12px;
       border-radius: 999px;
       border: 1px solid var(--border);
-      padding: 9px 14px;
       font-size: 14px;
       outline: none;
-      background: #f9fafb;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease,
-        background-color 0.15s ease;
+      background: #ffffff;
+      color: var(--text-main);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
       appearance: none;
     }
 
     .select:focus,
     .input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px var(--accent-soft);
-      background: #ffffff;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
+      background: #f9fbff;
     }
 
-    .btn-primary {
+    .button {
+      padding: 11px 26px;
       border-radius: 999px;
       border: none;
-      padding: 10px 20px;
       font-size: 14px;
       font-weight: 600;
-      color: white;
-      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      background: var(--primary);
+      color: #ffffff;
       cursor: pointer;
-      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25);
+      white-space: nowrap;
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      white-space: nowrap;
+      gap: 6px;
+      box-shadow: 0 14px 30px rgba(37, 99, 235, 0.25);
+      transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.08s ease;
     }
 
-    .btn-primary:disabled {
-      opacity: 0.65;
+    .button:hover {
+      background: #1d4ed8;
+      box-shadow: 0 16px 38px rgba(37, 99, 235, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .button:disabled {
+      opacity: 0.6;
       cursor: default;
       box-shadow: none;
+      transform: none;
     }
 
-    .btn-primary span.dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.85);
-    }
-
-    .helper-text {
+    .meta-text {
       font-size: 11px;
       color: var(--text-muted);
-      margin-top: 6px;
+      margin: 4px 0 10px;
     }
 
-    .helper-text code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-        "Liberation Mono", "Courier New", monospace;
+    .meta-text code {
+      font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
       font-size: 11px;
-      background: #f3f4ff;
-      padding: 1px 4px;
-      border-radius: 4px;
+      background: #f1f5f9;
+      padding: 2px 5px;
+      border-radius: 6px;
     }
 
-    .status {
-      margin-top: 10px;
+    .status-line {
       font-size: 13px;
-      min-height: 18px;
+      min-height: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-muted);
+    }
+
+    .status-left {
       display: flex;
       align-items: center;
-      color: var(--text-muted);
+      gap: 8px;
     }
 
-    .status.error {
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--primary);
+    }
+
+    .status-error {
       color: var(--danger);
     }
 
-    .status strong {
-      font-weight: 600;
+    .status-error .status-dot {
+      background: var(--danger);
     }
 
-    .results {
+    .docs-link {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .docs-link a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .docs-link a:hover {
+      text-decoration: underline;
+    }
+
+    .results-card {
       margin-top: 20px;
-      border-top: 1px solid var(--border);
-      padding-top: 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.24);
+      padding: 14px 18px;
+      max-height: 420px;
+      overflow: auto;
     }
 
     .results-header {
       display: flex;
       justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 10px;
-      gap: 8px;
-    }
-
-    .results-header h2 {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 650;
-    }
-
-    .results-header span {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .result-empty {
-      font-size: 13px;
-      color: var(--text-muted);
-      padding: 4px 0;
-    }
-
-    .lemma-card {
-      border-radius: var(--radius-sm);
-      border: 1px solid #e5e7f5;
-      padding: 10px 11px 9px;
+      align-items: center;
       margin-bottom: 8px;
-      background: #f9fafb;
+      font-size: 13px;
     }
 
-    .lemma-headline {
+    .results-title {
+      font-weight: 600;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 11px;
+      font-weight: 500;
+      gap: 4px;
+    }
+
+    .result-item {
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+    }
+
+    .result-item:last-child {
+      border-bottom: none;
+    }
+
+    .lemma-head {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .lemma-lemma {
-      font-weight: 650;
+      gap: 12px;
       font-size: 14px;
     }
 
-    .lemma-meta {
-      font-size: 11px;
+    .lemma-word {
+      font-weight: 600;
+    }
+
+    .lemma-lang {
+      font-size: 12px;
       color: var(--text-muted);
-      text-align: right;
-      white-space: nowrap;
     }
 
     .lemma-def {
       margin-top: 4px;
       font-size: 13px;
-      color: #374151;
+      color: var(--text-main);
     }
 
-    .lemma-examples {
-      margin-top: 6px;
-      font-size: 12px;
-      color: #4b5563;
-    }
-
-    .lemma-examples span.badge {
-      display: inline-block;
-      font-size: 11px;
-      padding: 2px 6px;
-      border-radius: 999px;
-      background: #e5f0ff;
-      color: #1d4ed8;
-      margin-right: 6px;
-    }
-
-    footer {
-      margin-top: 10px;
+    .lemma-meta {
+      margin-top: 4px;
       font-size: 11px;
       color: var(--text-muted);
+    }
+
+    .pagination {
       display: flex;
-      justify-content: space-between;
       align-items: center;
       gap: 8px;
+      margin-top: 10px;
+      font-size: 12px;
     }
 
-    footer a {
-      color: var(--accent);
-      text-decoration: none;
+    .page-btn {
+      border: 1px solid var(--border);
+      background: #ffffff;
+      border-radius: 999px;
+      padding: 4px 9px;
+      cursor: pointer;
+      font-size: 12px;
     }
 
-    footer a:hover {
-      text-decoration: underline;
+    .page-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
     }
 
-    @media (max-width: 800px) {
-      .filters-row {
-        grid-template-columns: minmax(0, 1fr);
-        align-items: stretch;
-      }
+    .page-info {
+      color: var(--text-muted);
+    }
 
-      .btn-primary {
-        width: 100%;
-        justify-content: center;
-      }
-
+    @media (max-width: 720px) {
       .page {
-        padding: 24px 12px;
+        padding: 20px 12px 32px;
       }
 
       .card {
-        padding: 20px 18px 18px;
+        padding: 18px 16px 20px;
+      }
+
+      .title {
+        font-size: 24px;
+      }
+
+      .filters-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .button {
+        width: 100%;
+        justify-content: center;
       }
     }
   </style>
 </head>
-
 <body>
-  <div class="page">
-    <div class="shell">
-      <header>
-        <h1>Personality Corpus – Concept Viewer</h1>
-        <p>Browse lemmas grouped by language for one kernel concept.</p>
-      </header>
+<div class="page">
+  <header class="header">
+    <h1 class="title">Personality Corpus – Concept Viewer</h1>
+    <p class="subtitle">
+      Browse lemmas grouped by language for one kernel concept.
+    </p>
+  </header>
 
-      <main class="card">
-        <section class="filters">
-          <div class="filters-row">
-            <div>
-              <div class="field-label">Kernel word</div>
-              <input
-                id="kernelInput"
-                class="input"
-                type="text"
-                list="kernelList"
-                placeholder="Start typing a kernel word…"
-                autocomplete="off"
-              />
-              <datalist id="kernelList"></datalist>
-            </div>
+  <main class="card">
+    <section>
+      <div class="filters-row">
+        <div class="field">
+          <label class="field-label" for="kernelSelect">Kernel word</label>
+          <select id="kernelSelect" class="select">
+            <option value="">Loading kernels…</option>
+          </select>
+        </div>
 
-            <div>
-              <div class="field-label">Language</div>
-              <select id="languageSelect" class="select">
-                <option value="">All languages</option>
-              </select>
-            </div>
+        <div class="field">
+          <label class="field-label" for="languageSelect">Language</label>
+          <select id="languageSelect" class="select">
+            <option value="">All languages</option>
+          </select>
+        </div>
 
-            <div>
-              <button id="searchBtn" class="btn-primary">
-                <span class="dot"></span>
-                <span>Search</span>
-              </button>
-            </div>
-          </div>
+        <button id="searchButton" class="button">
+          <span>Search</span>
+        </button>
+      </div>
 
-          <p class="helper-text">
-            Kernels are loaded from <code>/kernels</code>. Languages are loaded
-            from <code>/languages</code>. Data per kernel comes from
-            <code>/lemmas/by_kernel/&lt;kernel_word&gt;</code> or
-            <code>/languages/&lt;lang_prefix&gt;/lemmas?kernel=…</code>.
-          </p>
+      <p class="meta-text">
+        Kernels are loaded from <code>/kernels</code>. Languages are loaded from <code>/languages</code>.
+        Data per kernel comes from <code>/lemmas/by_kernel/&lt;kernel_word&gt;</code>.
+      </p>
 
-          <div id="status" class="status"></div>
-        </section>
+      <div id="statusLine" class="status-line">
+        <div class="status-left">
+          <span class="status-dot"></span>
+          <span id="statusText">Ready.</span>
+        </div>
+        <div class="docs-link">
+          API docs: <a href="https://personality-corpus-api-production.up.railway.app/docs" target="_blank" rel="noopener">/docs</a>
+        </div>
+      </div>
+    </section>
 
-        <section class="results" id="resultsSection" hidden>
-          <div class="results-header">
-            <h2 id="resultsTitle">Results</h2>
-            <span id="resultsSummary"></span>
-          </div>
-          <div id="resultsContainer"></div>
-        </section>
+    <section id="resultsSection" class="results-card" style="display:none;">
+      <div class="results-header">
+        <div class="results-title" id="resultsTitle">Results</div>
+        <div class="badge" id="resultsBadge">0 items</div>
+      </div>
+      <div id="resultsContainer"></div>
+      <div class="pagination" id="pagination" style="display:none;">
+        <button id="prevPage" class="page-btn">Prev</button>
+        <span class="page-info" id="pageInfo"></span>
+        <button id="nextPage" class="page-btn">Next</button>
+      </div>
+    </section>
+  </main>
+</div>
 
-        <footer>
-          <span>API docs: 
-            <a href="https://personality-corpus-api-production.up.railway.app/docs" target="_blank" rel="noreferrer">
-              /docs
-            </a>
-          </span>
-          <span id="debugInfo"></span>
-        </footer>
-      </main>
-    </div>
-  </div>
+<script>
+  const API_BASE = "https://personality-corpus-api-production.up.railway.app";
 
-  <script>
-    // *** CONFIG ***
-    const API_BASE =
-      "https://personality-corpus-api-production.up.railway.app";
+  const kernelSelect = document.getElementById("kernelSelect");
+  const languageSelect = document.getElementById("languageSelect");
+  const searchButton = document.getElementById("searchButton");
+  const statusLine = document.getElementById("statusLine");
+  const statusText = document.getElementById("statusText");
+  const resultsSection = document.getElementById("resultsSection");
+  const resultsContainer = document.getElementById("resultsContainer");
+  const resultsTitle = document.getElementById("resultsTitle");
+  const resultsBadge = document.getElementById("resultsBadge");
+  const pagination = document.getElementById("pagination");
+  const prevPageBtn = document.getElementById("prevPage");
+  const nextPageBtn = document.getElementById("nextPage");
+  const pageInfo = document.getElementById("pageInfo");
 
-    const kernelInput = document.getElementById("kernelInput");
-    const kernelList = document.getElementById("kernelList");
-    const languageSelect = document.getElementById("languageSelect");
-    const searchBtn = document.getElementById("searchBtn");
-    const statusEl = document.getElementById("status");
-    const resultsSection = document.getElementById("resultsSection");
-    const resultsTitle = document.getElementById("resultsTitle");
-    const resultsSummary = document.getElementById("resultsSummary");
-    const resultsContainer = document.getElementById("resultsContainer");
-    const debugInfo = document.getElementById("debugInfo");
+  let currentPage = 1;
+  const PAGE_SIZE = 50;
+  let lastQuery = null;
 
-    function setStatus(message, isError = false) {
-      statusEl.textContent = message || "";
-      statusEl.classList.toggle("error", Boolean(isError));
+  function setStatus(message, isError = false) {
+    statusText.textContent = message;
+    if (isError) {
+      statusLine.classList.add("status-error");
+    } else {
+      statusLine.classList.remove("status-error");
     }
+  }
 
-    function setDebug(message) {
-      debugInfo.textContent = message || "";
-    }
+  function setLoading(isLoading) {
+    searchButton.disabled = isLoading;
+    searchButton.textContent = isLoading ? "Loading…" : "Search";
+  }
 
-    function normaliseList(payload) {
-      if (!payload) return [];
-      if (Array.isArray(payload)) return payload;
-      if (Array.isArray(payload.results)) return payload.results;
-      if (Array.isArray(payload.items)) return payload.items;
-      return [];
-    }
+  async function loadFilters() {
+    setStatus("Loading kernels and languages…");
+    try {
+      const [kernelsRes, languagesRes] = await Promise.all([
+        fetch(`${API_BASE}/kernels`),
+        fetch(`${API_BASE}/languages`)
+      ]);
 
-    async function loadFilters() {
-      try {
-        setStatus("Loading kernels and languages…");
-        setDebug("");
+      if (!kernelsRes.ok || !languagesRes.ok) {
+        throw new Error(`Kernels status ${kernelsRes.status}, languages status ${languagesRes.status}`);
+      }
 
-        const kernelsUrl = `${API_BASE}/kernels`;
-        const languagesUrl = `${API_BASE}/languages`;
+      const kernels = await kernelsRes.json();      // plain array
+      const languages = await languagesRes.json();  // plain array
 
-        const [kernelsRes, langsRes] = await Promise.all([
-          fetch(kernelsUrl),
-          fetch(languagesUrl)
-        ]);
-
-        // Save URLs for debugging in UI
-        setDebug(`kernels: ${kernelsRes.status} • languages: ${langsRes.status}`);
-
-        if (!kernelsRes.ok || !langsRes.ok) {
-          throw new Error(
-            `Failed to load kernels or languages (kernels: ${kernelsRes.status}, languages: ${langsRes.status}).`
-          );
-        }
-
-        const kernelsJson = await kernelsRes.json();
-        const langsJson = await langsRes.json();
-
-        const kernels = normaliseList(kernelsJson);
-        const languages = normaliseList(langsJson);
-
-        // Populate kernels datalist
-        kernelList.innerHTML = "";
-        kernels.forEach((k) => {
+      // Populate kernels
+      kernelSelect.innerHTML = "";
+      kernels
+        .sort((a, b) => a.kernel.localeCompare(b.kernel))
+        .forEach(k => {
           const opt = document.createElement("option");
-          opt.value = k.kernel || k.name || String(k);
-          kernelList.appendChild(opt);
+          opt.value = k.kernel;
+          opt.textContent = k.kernel;
+          kernelSelect.appendChild(opt);
         });
 
-        // Populate languages select
-        languageSelect.innerHTML = "";
-        const allOpt = document.createElement("option");
-        allOpt.value = "";
-        allOpt.textContent = "All languages";
-        languageSelect.appendChild(allOpt);
+      // Populate languages
+      languageSelect.innerHTML = "";
+      const allOpt = document.createElement("option");
+      allOpt.value = "";
+      allOpt.textContent = "All languages";
+      languageSelect.appendChild(allOpt);
 
-        languages.forEach((lang) => {
+      languages
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .forEach(lang => {
           const opt = document.createElement("option");
-          opt.value = lang.prefix || lang.code || "";
-          opt.textContent = lang.name
-            ? `${lang.name} (${opt.value})`
-            : opt.value || JSON.stringify(lang);
+          opt.value = lang.prefix; // prefix, npr. ENG, SLO…
+          opt.textContent = lang.name;
           languageSelect.appendChild(opt);
         });
 
-        if (kernels.length > 0) {
-          setStatus(
-            `Loaded ${kernels.length} kernel(s) and ${languages.length} language(s).`
-          );
-        } else {
-          setStatus(
-            "No kernels returned from the API. Check the /kernels endpoint.",
-            true
-          );
-        }
-      } catch (err) {
-        console.error("Error loading filters", err);
-        setStatus(
-          err && err.message
-            ? `Error loading filters: ${err.message}`
-            : "Error loading filters.",
-          true
-        );
-      }
+      setStatus("Filters loaded. Choose a kernel and press Search.");
+    } catch (err) {
+      console.error("Error loading filters", err);
+      setStatus("Error loading filters: Failed to load kernels or languages.", true);
+    }
+  }
+
+  async function fetchLemmasForKernel({ kernel, langPrefix, page }) {
+    const params = new URLSearchParams();
+    if (langPrefix) params.append("lang_prefix", langPrefix);
+    params.append("page", page);
+    params.append("page_size", PAGE_SIZE);
+
+    const url = `${API_BASE}/lemmas/by_kernel/${encodeURIComponent(kernel)}?${params.toString()}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Lemma request failed with status ${res.status}`);
+    }
+    return res.json(); // očekujemo {items, total, page, page_size}
+  }
+
+  function renderResults(data, kernel, langPrefix) {
+    const items = data.items || [];
+    const total = data.total ?? items.length;
+    const page = data.page ?? 1;
+    const pageSize = data.page_size ?? items.length;
+
+    resultsContainer.innerHTML = "";
+
+    if (!items.length) {
+      resultsContainer.innerHTML = "<p style='font-size:13px;color:#64748b;'>No lemmas found for this kernel/language combination.</p>";
+      resultsBadge.textContent = "0 items";
+      pagination.style.display = "none";
+      return;
     }
 
-    function renderResults(lemmas, kernelWord, langLabel) {
-      resultsContainer.innerHTML = "";
-      if (!lemmas || lemmas.length === 0) {
-        resultsSection.hidden = false;
-        resultsTitle.textContent = "Results";
-        resultsSummary.textContent = "";
-        const empty = document.createElement("div");
-        empty.className = "result-empty";
-        empty.textContent = "No lemmas found for the current query.";
-        resultsContainer.appendChild(empty);
-        return;
-      }
+    items.forEach(item => {
+      const div = document.createElement("div");
+      div.className = "result-item";
 
-      resultsSection.hidden = false;
-      resultsTitle.textContent = `Kernel: ${kernelWord}`;
-      resultsSummary.textContent = `${lemmas.length} lemma(s)${
-        langLabel ? ` • ${langLabel}` : ""
-      }`;
+      const examplesText = item.examples && item.examples.length
+        ? item.examples.join(" · ")
+        : "";
 
-      lemmas.forEach((lemma) => {
-        const card = document.createElement("article");
-        card.className = "lemma-card";
-
-        const head = document.createElement("div");
-        head.className = "lemma-headline";
-
-        const lemmaSpan = document.createElement("div");
-        lemmaSpan.className = "lemma-lemma";
-        lemmaSpan.textContent = lemma.lemma || lemma.text || "(no lemma)";
-
-        const meta = document.createElement("div");
-        meta.className = "lemma-meta";
-        const lang = lemma.language_prefix || lemma.language || "";
-        meta.textContent = lang ? lang.toUpperCase() : "";
-
-        head.appendChild(lemmaSpan);
-        head.appendChild(meta);
-        card.appendChild(head);
-
-        if (lemma.definition) {
-          const def = document.createElement("div");
-          def.className = "lemma-def";
-          def.textContent = lemma.definition;
-          card.appendChild(def);
-        }
-
-        if (lemma.examples && lemma.examples.length) {
-          const exBlock = document.createElement("div");
-          exBlock.className = "lemma-examples";
-
-          const badge = document.createElement("span");
-          badge.className = "badge";
-          badge.textContent = `${lemma.examples.length} example(s)`;
-          exBlock.appendChild(badge);
-
-          const firstEx = document.createElement("span");
-          firstEx.textContent = lemma.examples[0];
-          exBlock.appendChild(firstEx);
-
-          card.appendChild(exBlock);
-        }
-
-        resultsContainer.appendChild(card);
-      });
-    }
-
-    async function handleSearch() {
-      const kernelWord = kernelInput.value.trim();
-      const langPrefix = languageSelect.value || "";
-
-      if (!kernelWord) {
-        setStatus("Please enter (or choose) a kernel word first.", true);
-        return;
-      }
-
-      try {
-        searchBtn.disabled = true;
-        setStatus("Searching…");
-        resultsSection.hidden = true;
-
-        let url;
-        if (langPrefix) {
-          url = `${API_BASE}/languages/${encodeURIComponent(
-            langPrefix
-          )}/lemmas?kernel=${encodeURIComponent(kernelWord)}`;
-        } else {
-          url = `${API_BASE}/lemmas/by_kernel/${encodeURIComponent(kernelWord)}`;
-        }
-
-        const res = await fetch(url);
-        setDebug(`search: ${res.status}`);
-
-        if (!res.ok) {
-          throw new Error(`Search failed with status ${res.status}.`);
-        }
-
-        const data = await res.json();
-        const lemmas = normaliseList(data);
-
-        const langLabel =
-          langPrefix &&
-          languageSelect.options[languageSelect.selectedIndex]?.textContent;
-
-        renderResults(lemmas, kernelWord, langLabel);
-        setStatus("Search complete.");
-      } catch (err) {
-        console.error("Search error", err);
-        setStatus(
-          err && err.message ? `Error during search: ${err.message}` : "Error during search.",
-          true
-        );
-      } finally {
-        searchBtn.disabled = false;
-      }
-    }
-
-    // Wire up events
-    searchBtn.addEventListener("click", handleSearch);
-    kernelInput.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter") {
-        ev.preventDefault();
-        handleSearch();
-      }
+      div.innerHTML = `
+        <div class="lemma-head">
+          <div class="lemma-word">${item.lemma}</div>
+          <div class="lemma-lang">${item.lang_name || ""} (${item.lang_prefix || ""})</div>
+        </div>
+        <div class="lemma-def">${item.definition || ""}</div>
+        <div class="lemma-meta">
+          ID: ${item.id ?? "–"}
+          ${examplesText ? ` · Examples: ${examplesText}` : ""}
+        </div>
+      `;
+      resultsContainer.appendChild(div);
     });
 
-    // Initial load
-    window.addEventListener("DOMContentLoaded", () => {
-      setDebug("");
-      loadFilters();
-    });
-  </script>
+    resultsTitle.textContent = `Kernel "${kernel}"${langPrefix ? ` · ${langPrefix}` : ""}`;
+    resultsBadge.textContent = `${total} items total`;
+
+    // Pagination controls
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    pagination.style.display = totalPages > 1 ? "flex" : "none";
+    currentPage = page;
+    pageInfo.textContent = `Page ${page} of ${totalPages}`;
+    prevPageBtn.disabled = page <= 1;
+    nextPageBtn.disabled = page >= totalPages;
+  }
+
+  async function runSearch(page = 1) {
+    const kernel = kernelSelect.value;
+    const langPrefix = languageSelect.value || "";
+
+    if (!kernel) {
+      setStatus("Please choose a kernel word first.", true);
+      return;
+    }
+
+    setLoading(true);
+    setStatus("Loading lemmas…");
+    resultsSection.style.display = "block";
+
+    if (!lastQuery) {
+      lastQuery = {};
+    }
+    lastQuery.kernel = kernel;
+    lastQuery.langPrefix = langPrefix;
+
+    try {
+      const data = await fetchLemmasForKernel({ kernel, langPrefix, page });
+      renderResults(data, kernel, langPrefix);
+      setStatus("Results loaded.");
+    } catch (err) {
+      console.error("Search error", err);
+      setStatus("Error loading lemmas for selected kernel/language.", true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Event handlers
+  searchButton.addEventListener("click", () => runSearch(1));
+
+  prevPageBtn.addEventListener("click", () => {
+    if (!lastQuery || currentPage <= 1) return;
+    runSearch(currentPage - 1);
+  });
+
+  nextPageBtn.addEventListener("click", () => {
+    if (!lastQuery) return;
+    runSearch(currentPage + 1);
+  });
+
+  // Init
+  loadFilters();
+</script>
 </body>
 </html>
