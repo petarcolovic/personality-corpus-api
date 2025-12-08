@@ -239,7 +239,7 @@
       searchBtn.disabled = true;
 
       const [kernelsRes, langsRes] = await Promise.all([
-        fetch(`${API_BASE}/kernels/paged?page=1&page_size=500`),
+        fetch(`${API_BASE}/kernels`),
         fetch(`${API_BASE}/languages`)
       ]);
 
