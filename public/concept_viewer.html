@@ -293,7 +293,7 @@
       </div>
 
       <div class="helper-text">
-        Kernels are loaded from <code>/kernels</code>. Languages are loaded from
+        kernels are loaded from <code>/kernels</code>. Languages are loaded from
         <code>/languages</code>. Data per kernel comes from
         <code>/lemmas/by_kernel/&lt;kernel_word&gt;</code>.
       </div>
@@ -314,7 +314,7 @@
   <script>
     const API_BASE = "https://personality-corpus-api-production.up.railway.app";
 
-    const kernelSelect = document.getElementById("kernel-select");
+    const kernelselect = document.getElementById("kernel-select");
     const languageSelect = document.getElementById("language-select");
     const searchBtn = document.getElementById("search-btn");
     const errorEl = document.getElementById("error");
@@ -362,17 +362,17 @@
       }
     }
 
-    async function loadKernels() {
+    async function loadkernels() {
       try {
         // VAŽNO: koristimo /kernels (BEZ /paged)
         const kernels = await fetchJSON(`${API_BASE}/kernels`);
         if (!Array.isArray(kernels) || kernels.length === 0) {
-          kernelSelect.innerHTML =
+          kernelselect.innerHTML =
             '<option value="">No kernels found</option>';
           return;
         }
 
-        kernelSelect.innerHTML =
+        kernelselect.innerHTML =
           '<option value="">Choose a kernel…</option>';
 
         kernels.forEach((k) => {
@@ -382,11 +382,11 @@
           opt.textContent = count
             ? `${opt.value} (${count})`
             : opt.value;
-          kernelSelect.appendChild(opt);
+          kernelselect.appendChild(opt);
         });
       } catch (err) {
         showError("Error loading kernels. " + err.message);
-        kernelSelect.innerHTML =
+        kernelselect.innerHTML =
           '<option value="">Error loading kernels</option>';
       }
     }
@@ -394,7 +394,7 @@
     async function searchLemmas() {
       clearError();
 
-      const kernel = kernelSelect.value;
+      const kernel = kernelselect.value;
       const langFilter = languageSelect.value;
 
       if (!kernel) {
@@ -482,7 +482,7 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       loadLanguages();
-      loadKernels();
+      loadkernels();
       searchBtn.addEventListener("click", searchLemmas);
     });
   </script>
