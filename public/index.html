@@ -1,0 +1,491 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Personality Corpus – Concept Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #f3f5fb;
+      --card-bg: #ffffff;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --border: #e5e7eb;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --error: #dc2626;
+      --radius-lg: 16px;
+      --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      background: radial-gradient(circle at top, #e0ebff 0, #f3f5fb 55%);
+      min-height: 100vh;
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+    }
+
+    .page {
+      width: 100%;
+      max-width: 1100px;
+      padding: 32px 16px 48px;
+    }
+
+    .title {
+      font-size: 2.1rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      text-align: left;
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      padding: 24px 24px 20px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .filters-row {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr auto;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .field-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+    }
+
+    input[type="text"],
+    select {
+      padding: 10px 11px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      outline: none;
+      font-size: 0.9rem;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease,
+        background-color 0.15s ease;
+      background: #f9fafb;
+    }
+
+    input[type="text"]:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+      background: #ffffff;
+    }
+
+    .btn-primary {
+      padding: 10px 22px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      background: var(--accent);
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+      transition: transform 0.08s ease, box-shadow 0.08s ease,
+        background-color 0.1s ease;
+      white-space: nowrap;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 26px rgba(37, 99, 235, 0.45);
+      background: #1d4ed8;
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.38);
+    }
+
+    .helper-text {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin: 10px 4px 4px;
+    }
+
+    .helper-text code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: #1d4ed8;
+      font-size: 0.8rem;
+    }
+
+    .error-text {
+      font-size: 0.9rem;
+      color: var(--error);
+      margin-top: 10px;
+      margin-left: 4px;
+    }
+
+    .results {
+      margin-top: 18px;
+      border-top: 1px solid rgba(226, 232, 240, 0.9);
+      padding-top: 14px;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+
+    .result-meta {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      padding: 2px 8px;
+      font-size: 0.75rem;
+    }
+
+    .pill strong {
+      font-size: 0.8rem;
+    }
+
+    .lemma-group {
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #f9fafb;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+    }
+
+    .lemma-group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 4px;
+    }
+
+    .lemma-language {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #4b5563;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .lemma-count {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .lemma-list {
+      font-size: 0.9rem;
+      color: #111827;
+    }
+
+    .lemma-list span {
+      display: inline-block;
+      margin-right: 8px;
+      margin-bottom: 2px;
+    }
+
+    .api-docs-link {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: right;
+      margin-top: 8px;
+    }
+
+    .api-docs-link a {
+      color: #1d4ed8;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .api-docs-link a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 840px) {
+      .filters-row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+
+      .btn-primary {
+        width: 100%;
+      }
+
+      .card {
+        padding: 18px 16px 16px;
+      }
+
+      .title {
+        font-size: 1.6rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="title">Personality Corpus – Concept Viewer</div>
+    <div class="subtitle">
+      Browse lemmas grouped by language for one kernel concept.
+    </div>
+
+    <div class="card">
+      <div class="filters-row">
+        <div class="field">
+          <label class="field-label" for="kernel-select">Kernel word</label>
+          <select id="kernel-select">
+            <option value="">Loading kernels…</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="language-select">Language</label>
+          <select id="language-select">
+            <option value="">All languages</option>
+          </select>
+        </div>
+
+        <div class="field" style="align-self: flex-end;">
+          <button id="search-btn" class="btn-primary">
+            Search
+          </button>
+        </div>
+      </div>
+
+      <div class="helper-text">
+        kernels are loaded from <code>/kernels</code>. Languages are loaded from
+        <code>/languages</code>. Data per kernel comes from
+        <code>/lemmas/by_kernel/&lt;kernel_word&gt;</code>.
+      </div>
+
+      <div id="error" class="error-text" style="display: none;"></div>
+
+      <div class="results" id="results" style="display: none;">
+        <div class="result-meta" id="results-meta"></div>
+        <div id="results-body"></div>
+      </div>
+
+      <div class="api-docs-link">
+        API docs: <a href="https://personality-corpus-api-production.up.railway.app/docs" target="_blank" rel="noopener">/docs</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "https://personality-corpus-api-production.up.railway.app";
+
+    const kernelselect = document.getElementById("kernel-select");
+    const languageSelect = document.getElementById("language-select");
+    const searchBtn = document.getElementById("search-btn");
+    const errorEl = document.getElementById("error");
+    const resultsEl = document.getElementById("results");
+    const resultsMetaEl = document.getElementById("results-meta");
+    const resultsBodyEl = document.getElementById("results-body");
+
+    function showError(message) {
+      console.error("[Concept Viewer error]", message);
+      errorEl.textContent = message;
+      errorEl.style.display = "block";
+      resultsEl.style.display = "none";
+    }
+
+    function clearError() {
+      errorEl.textContent = "";
+      errorEl.style.display = "none";
+    }
+
+    async function fetchJSON(url) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(
+          `Request to ${url} failed with ${response.status}: ${text || "No body"}`
+        );
+      }
+      return response.json();
+    }
+
+    async function loadLanguages() {
+      try {
+        const languages = await fetchJSON(`${API_BASE}/languages`);
+        languageSelect.innerHTML =
+          '<option value="">All languages</option>';
+
+        languages.forEach((lang) => {
+          const opt = document.createElement("option");
+          opt.value = lang.prefix || lang.iso || lang.iso_639_1 || "";
+          opt.textContent = lang.name || opt.value || "Unknown";
+          languageSelect.appendChild(opt);
+        });
+      } catch (err) {
+        showError("Error loading languages. " + err.message);
+      }
+    }
+
+    async function loadkernels() {
+      try {
+        // VAŽNO: koristimo /kernels (BEZ /paged)
+        const kernels = await fetchJSON(`${API_BASE}/kernels`);
+        if (!Array.isArray(kernels) || kernels.length === 0) {
+          kernelselect.innerHTML =
+            '<option value="">No kernels found</option>';
+          return;
+        }
+
+        kernelselect.innerHTML =
+          '<option value="">Choose a kernel…</option>';
+
+        kernels.forEach((k) => {
+          const opt = document.createElement("option");
+          opt.value = k.kernel_word || k.kernel || k.word || "";
+          const count = k.lemma_count ?? k.count ?? "";
+          opt.textContent = count
+            ? `${opt.value} (${count})`
+            : opt.value;
+          kernelselect.appendChild(opt);
+        });
+      } catch (err) {
+        showError("Error loading kernels. " + err.message);
+        kernelselect.innerHTML =
+          '<option value="">Error loading kernels</option>';
+      }
+    }
+
+    async function searchLemmas() {
+      clearError();
+
+      const kernel = kernelselect.value;
+      const langFilter = languageSelect.value;
+
+      if (!kernel) {
+        showError("Please choose a kernel word first.");
+        return;
+      }
+
+      try {
+        const encodedKernel = encodeURIComponent(kernel);
+        const url = `${API_BASE}/lemmas/by_kernel/${encodedKernel}`;
+        const data = await fetchJSON(url);
+
+        const groupsRaw = Array.isArray(data) ? data : data.results || data.items || [];
+        const groups = groupsRaw.map((item) => ({
+          language: item.language_name || item.language || "Unknown",
+          language_prefix: item.language_prefix || item.prefix || "",
+          lemmas: item.lemmas || item.lemma_list || [],
+          count:
+            item.lemma_count ||
+            (item.lemmas ? item.lemmas.length : item.lemma_list?.length || 0),
+        }));
+
+        const filteredGroups = langFilter
+          ? groups.filter(
+              (g) =>
+                g.language_prefix === langFilter ||
+                g.language === langFilter
+            )
+          : groups;
+
+        if (filteredGroups.length === 0) {
+          resultsEl.style.display = "block";
+          resultsMetaEl.innerHTML = `<span>No lemmas found for this combination.</span>`;
+          resultsBodyEl.innerHTML = "";
+          return;
+        }
+
+        let totalLemmas = 0;
+        filteredGroups.forEach((g) => {
+          totalLemmas += g.count || g.lemmas.length || 0;
+        });
+
+        resultsEl.style.display = "block";
+        resultsMetaEl.innerHTML = `
+          <span>Kernel: <strong>${kernel}</strong></span>
+          <span class="pill">
+            <strong>${filteredGroups.length}</strong>&nbsp;language(s),
+            &nbsp;<strong>${totalLemmas}</strong>&nbsp;lemma(s)
+          </span>
+        `;
+
+        resultsBodyEl.innerHTML = "";
+        filteredGroups.forEach((g) => {
+          const div = document.createElement("div");
+          div.className = "lemma-group";
+          const lemmasText = (g.lemmas || []).join(", ");
+
+          div.innerHTML = `
+            <div class="lemma-group-header">
+              <div class="lemma-language">
+                ${g.language}
+                ${
+                  g.language_prefix
+                    ? `&nbsp;<span style="font-weight:400;color:#9ca3af;">(${g.language_prefix})</span>`
+                    : ""
+                }
+              </div>
+              <div class="lemma-count">${g.count || g.lemmas.length} lemma(s)</div>
+            </div>
+            <div class="lemma-list">
+              ${lemmasText
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .map((lemma) => `<span>${lemma}</span>`)
+                .join("")}
+            </div>
+          `;
+          resultsBodyEl.appendChild(div);
+        });
+      } catch (err) {
+        showError("Error loading lemmas. " + err.message);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadLanguages();
+      loadkernels();
+      searchBtn.addEventListener("click", searchLemmas);
+    });
+  </script>
+</body>
+</html>
