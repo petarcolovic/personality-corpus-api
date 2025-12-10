@@ -83,7 +83,6 @@
       flex-direction: column;
     }
 
-    input[type="text"],
     select {
       padding: 10px 11px;
       border-radius: 999px;
@@ -95,7 +94,6 @@
       background: #f9fafb;
     }
 
-    input[type="text"]:focus,
     select:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
@@ -348,6 +346,7 @@
       return response.json();
     }
 
+    // jezici – jednostavno, kao ranije
     async function loadLanguages() {
       try {
         const languages = await fetchJSON(`${API_BASE}/languages`);
@@ -365,30 +364,12 @@
       }
     }
 
-    // robusno učitavanje kernela
+    // KERNELI – veoma jednostavna varijanta (ona koja ti je radila)
     async function loadKernels() {
       try {
-        const raw = await fetchJSON(`${API_BASE}/kernels`);
+        const kernels = await fetchJSON(`${API_BASE}/kernels`);
 
-        let kernels = [];
-        if (Array.isArray(raw)) {
-          kernels = raw;
-        } else if (raw && typeof raw === "object") {
-          if (Array.isArray(raw.results)) kernels = raw.results;
-          else if (Array.isArray(raw.items)) kernels = raw.items;
-          else if (Array.isArray(raw.data)) kernels = raw.data;
-          else if (Array.isArray(raw.kernels)) kernels = raw.kernels;
-          else {
-            for (const value of Object.values(raw)) {
-              if (Array.isArray(value)) {
-                kernels = value;
-                break;
-              }
-            }
-          }
-        }
-
-        if (!kernels || kernels.length === 0) {
+        if (!Array.isArray(kernels) || kernels.length === 0) {
           kernelSelect.innerHTML =
             '<option value="">No kernels found</option>';
           return;
@@ -399,11 +380,11 @@
 
         kernels.forEach((k) => {
           const opt = document.createElement("option");
-          const word = k.kernel_word || k.kernel || k.word || k.term || "";
-          const count = k.n_lemmas ?? k.lemma_count ?? k.count ?? k.n ?? "";
-
-          opt.value = word;
-          opt.textContent = count ? `${word} (${count})` : word || "(no label)";
+          opt.value = k.kernel_word || k.kernel || k.word || "";
+          const count = k.lemma_count ?? k.count ?? "";
+          opt.textContent = count
+            ? `${opt.value} (${count})`
+            : opt.value;
           kernelSelect.appendChild(opt);
         });
       } catch (err) {
@@ -413,7 +394,7 @@
       }
     }
 
-    // NOVA funkcija za pretragu lemmi (radi i za flat i za grupisani format)
+    // Pretraga lemmi – radi i za “flat” i za već grupisane odgovore
     async function searchLemmas() {
       clearError();
 
@@ -464,7 +445,7 @@
                 : item.lemma_list?.length || 0),
           }));
         } else {
-          // flat format: jedna lemna po redu -> ovde je grupišemo po jeziku
+          // flat format: jedna lemma po redu
           const map = new Map();
 
           rows.forEach((r) => {
@@ -550,7 +531,9 @@
                 ${g.language}
                 ${
                   g.language_prefix
-                    ? \`&nbsp;<span style="font-weight:400;color:#9ca3af;">(\${g.language_prefix})</span>\`
+                    ? ' <span style="font-weight:400;color:#9ca3af;">(' +
+                      g.language_prefix +
+                      ')</span>'
                     : ""
                 }
               </div>
