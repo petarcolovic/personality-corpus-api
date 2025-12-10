@@ -365,7 +365,7 @@
       }
     }
 
-    // NOVA, robustnija funkcija za učitavanje kernela
+    // robusno učitavanje kernela
     async function loadKernels() {
       try {
         const raw = await fetchJSON(`${API_BASE}/kernels`);
@@ -379,7 +379,6 @@
           else if (Array.isArray(raw.data)) kernels = raw.data;
           else if (Array.isArray(raw.kernels)) kernels = raw.kernels;
           else {
-            // fallback – prvi property koji je niz
             for (const value of Object.values(raw)) {
               if (Array.isArray(value)) {
                 kernels = value;
@@ -414,6 +413,7 @@
       }
     }
 
+    // NOVA funkcija za pretragu lemmi (radi i za flat i za grupisani format)
     async function searchLemmas() {
       clearError();
 
@@ -430,15 +430,83 @@
         const url = `${API_BASE}/lemmas/by_kernel/${encodedKernel}`;
         const data = await fetchJSON(url);
 
-        const groupsRaw = Array.isArray(data) ? data : data.results || data.items || [];
-        const groups = groupsRaw.map((item) => ({
-          language: item.language_name || item.language || "Unknown",
-          language_prefix: item.language_prefix || item.prefix || "",
-          lemmas: item.lemmas || item.lemma_list || [],
-          count:
-            item.lemma_count ||
-            (item.lemmas ? item.lemmas.length : item.lemma_list?.length || 0),
-        }));
+        let rows = [];
+        if (Array.isArray(data)) {
+          rows = data;
+        } else if (data && typeof data === "object") {
+          rows = data.results || data.items || data.data || data.lemmas || [];
+        }
+
+        if (!rows || rows.length === 0) {
+          resultsEl.style.display = "block";
+          resultsMetaEl.innerHTML =
+            "<span>No lemmas found for this kernel.</span>";
+          resultsBodyEl.innerHTML = "";
+          return;
+        }
+
+        let groups = [];
+
+        const first = rows[0] || {};
+        const hasGrouped =
+          Array.isArray(first.lemmas) || Array.isArray(first.lemma_list);
+
+        if (hasGrouped) {
+          // već grupisano po jeziku
+          groups = rows.map((item) => ({
+            language: item.language_name || item.language || "Unknown",
+            language_prefix: item.language_prefix || item.prefix || "",
+            lemmas: item.lemmas || item.lemma_list || [],
+            count:
+              item.lemma_count ||
+              (item.lemmas
+                ? item.lemmas.length
+                : item.lemma_list?.length || 0),
+          }));
+        } else {
+          // flat format: jedna lemna po redu -> ovde je grupišemo po jeziku
+          const map = new Map();
+
+          rows.forEach((r) => {
+            const lemmaText =
+              r.lemma ||
+              r.lemma_word ||
+              r.word ||
+              r.form ||
+              r.text ||
+              r.lemma_text;
+
+            if (!lemmaText) return;
+
+            const langPrefix =
+              r.language_prefix ||
+              r.lang_prefix ||
+              r.prefix ||
+              r.language_code ||
+              "";
+            const langName =
+              r.language_name ||
+              r.language ||
+              r.lang ||
+              langPrefix ||
+              "Unknown";
+
+            const key = `${langPrefix}|${langName}`;
+            if (!map.has(key)) {
+              map.set(key, {
+                language: langName,
+                language_prefix: langPrefix,
+                lemmas: [],
+              });
+            }
+            map.get(key).lemmas.push(lemmaText);
+          });
+
+          groups = Array.from(map.values()).map((g) => ({
+            ...g,
+            count: g.lemmas.length,
+          }));
+        }
 
         const filteredGroups = langFilter
           ? groups.filter(
@@ -450,7 +518,8 @@
 
         if (filteredGroups.length === 0) {
           resultsEl.style.display = "block";
-          resultsMetaEl.innerHTML = `<span>No lemmas found for this combination.</span>`;
+          resultsMetaEl.innerHTML =
+            "<span>No lemmas found for this combination.</span>";
           resultsBodyEl.innerHTML = "";
           return;
         }
@@ -481,11 +550,13 @@
                 ${g.language}
                 ${
                   g.language_prefix
-                    ? `&nbsp;<span style="font-weight:400;color:#9ca3af;">(${g.language_prefix})</span>`
+                    ? \`&nbsp;<span style="font-weight:400;color:#9ca3af;">(\${g.language_prefix})</span>\`
                     : ""
                 }
               </div>
-              <div class="lemma-count">${g.count || g.lemmas.length} lemma(s)</div>
+              <div class="lemma-count">${
+                g.count || g.lemmas.length
+              } lemma(s)</div>
             </div>
             <div class="lemma-list">
               ${lemmasText
