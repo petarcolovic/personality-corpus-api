@@ -83,6 +83,7 @@
       flex-direction: column;
     }
 
+    input[type="text"],
     select {
       padding: 10px 11px;
       border-radius: 999px;
@@ -94,6 +95,7 @@
       background: #f9fafb;
     }
 
+    input[type="text"]:focus,
     select:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
@@ -304,7 +306,9 @@
       </div>
 
       <div class="api-docs-link">
-        API docs: <a href="https://personality-corpus-api-production.up.railway.app/docs" target="_blank" rel="noopener">/docs</a>
+        API docs:
+        <a href="https://personality-corpus-api-production.up.railway.app/docs"
+           target="_blank" rel="noopener">/docs</a>
       </div>
     </div>
   </div>
@@ -361,10 +365,30 @@
       }
     }
 
+    // robusno učitavanje kernela
     async function loadKernels() {
       try {
-        const kernels = await fetchJSON(`${API_BASE}/kernels`);
-        if (!Array.isArray(kernels) || kernels.length === 0) {
+        const raw = await fetchJSON(`${API_BASE}/kernels`);
+
+        let kernels = [];
+        if (Array.isArray(raw)) {
+          kernels = raw;
+        } else if (raw && typeof raw === "object") {
+          if (Array.isArray(raw.results)) kernels = raw.results;
+          else if (Array.isArray(raw.items)) kernels = raw.items;
+          else if (Array.isArray(raw.data)) kernels = raw.data;
+          else if (Array.isArray(raw.kernels)) kernels = raw.kernels;
+          else {
+            for (const value of Object.values(raw)) {
+              if (Array.isArray(value)) {
+                kernels = value;
+                break;
+              }
+            }
+          }
+        }
+
+        if (!kernels || kernels.length === 0) {
           kernelSelect.innerHTML =
             '<option value="">No kernels found</option>';
           return;
@@ -375,10 +399,11 @@
 
         kernels.forEach((k) => {
           const opt = document.createElement("option");
-          const word = k.kernel_word || k.kernel || k.word || "";
-          const count = k.n_lemmas ?? k.lemma_count ?? k.count ?? "";
+          const word = k.kernel_word || k.kernel || k.word || k.term || "";
+          const count = k.n_lemmas ?? k.lemma_count ?? k.count ?? k.n ?? "";
+
           opt.value = word;
-          opt.textContent = count ? `${word} (${count})` : word;
+          opt.textContent = count ? `${word} (${count})` : word || "(no label)";
           kernelSelect.appendChild(opt);
         });
       } catch (err) {
@@ -388,6 +413,7 @@
       }
     }
 
+    // NOVA funkcija za pretragu lemmi (radi i za flat i za grupisani format)
     async function searchLemmas() {
       clearError();
 
@@ -401,12 +427,17 @@
 
       try {
         const encodedKernel = encodeURIComponent(kernel);
-        const url = `${API_BASE}/lemmas/by_kernel/${encodedKernel}?page=1&page_size=1000`;
+        const url = `${API_BASE}/lemmas/by_kernel/${encodedKernel}`;
         const data = await fetchJSON(url);
 
-        const rows = Array.isArray(data) ? data : (data.results || []);
+        let rows = [];
+        if (Array.isArray(data)) {
+          rows = data;
+        } else if (data && typeof data === "object") {
+          rows = data.results || data.items || data.data || data.lemmas || [];
+        }
 
-        if (!Array.isArray(rows) || rows.length === 0) {
+        if (!rows || rows.length === 0) {
           resultsEl.style.display = "block";
           resultsMetaEl.innerHTML =
             "<span>No lemmas found for this kernel.</span>";
@@ -414,55 +445,104 @@
           return;
         }
 
-        // Grupisanje po jeziku
-        const byLang = {};
-        rows.forEach((item) => {
-          const langObj = item.language || {};
-          const prefix = langObj.prefix || item.lang_prefix || "";
-          const name = langObj.name || "";
-          const langKey = prefix || name || "Unknown";
+        let groups = [];
 
-          if (!byLang[langKey]) {
-            byLang[langKey] = {
-              language: name || langKey,
-              language_prefix: prefix,
-              lemmas: [],
-            };
-          }
+        const first = rows[0] || {};
+        const hasGrouped =
+          Array.isArray(first.lemmas) || Array.isArray(first.lemma_list);
 
-          const labelParts = [];
-          if (item.word_original) {
-            labelParts.push(item.word_original);
-          }
-          if (item.word_en) {
-            labelParts.push("[" + item.word_en + "]");
-          }
-          const label = labelParts.join(" ");
+        if (hasGrouped) {
+          // već grupisano po jeziku
+          groups = rows.map((item) => ({
+            language: item.language_name || item.language || "Unknown",
+            language_prefix: item.language_prefix || item.prefix || "",
+            lemmas: item.lemmas || item.lemma_list || [],
+            count:
+              item.lemma_count ||
+              (item.lemmas
+                ? item.lemmas.length
+                : item.lemma_list?.length || 0),
+          }));
+        } else {
+          // flat format: jedna lemna po redu -> ovde je grupišemo po jeziku
+          const map = new Map();
 
-          byLang[langKey].lemmas.push(label || "(no label)");
-        });
+          rows.forEach((r) => {
+            const lemmaText =
+              r.lemma ||
+              r.lemma_word ||
+              r.word ||
+              r.form ||
+              r.text ||
+              r.lemma_text;
 
-        const groups = Object.values(byLang);
+            if (!lemmaText) return;
+
+            const langPrefix =
+              r.language_prefix ||
+              r.lang_prefix ||
+              r.prefix ||
+              r.language_code ||
+              "";
+            const langName =
+              r.language_name ||
+              r.language ||
+              r.lang ||
+              langPrefix ||
+              "Unknown";
+
+            const key = `${langPrefix}|${langName}`;
+            if (!map.has(key)) {
+              map.set(key, {
+                language: langName,
+                language_prefix: langPrefix,
+                lemmas: [],
+              });
+            }
+            map.get(key).lemmas.push(lemmaText);
+          });
+
+          groups = Array.from(map.values()).map((g) => ({
+            ...g,
+            count: g.lemmas.length,
+          }));
+        }
+
+        const filteredGroups = langFilter
+          ? groups.filter(
+              (g) =>
+                g.language_prefix === langFilter ||
+                g.language === langFilter
+            )
+          : groups;
+
+        if (filteredGroups.length === 0) {
+          resultsEl.style.display = "block";
+          resultsMetaEl.innerHTML =
+            "<span>No lemmas found for this combination.</span>";
+          resultsBodyEl.innerHTML = "";
+          return;
+        }
 
         let totalLemmas = 0;
-        groups.forEach((g) => {
-          totalLemmas += g.lemmas.length;
+        filteredGroups.forEach((g) => {
+          totalLemmas += g.count || g.lemmas.length || 0;
         });
 
         resultsEl.style.display = "block";
         resultsMetaEl.innerHTML = `
           <span>Kernel: <strong>${kernel}</strong></span>
           <span class="pill">
-            <strong>${groups.length}</strong>&nbsp;language(s),
+            <strong>${filteredGroups.length}</strong>&nbsp;language(s),
             &nbsp;<strong>${totalLemmas}</strong>&nbsp;lemma(s)
           </span>
         `;
 
         resultsBodyEl.innerHTML = "";
-        groups.forEach((g) => {
+        filteredGroups.forEach((g) => {
           const div = document.createElement("div");
           div.className = "lemma-group";
-          const lemmasText = g.lemmas;
+          const lemmasText = (g.lemmas || []).join(", ");
 
           div.innerHTML = `
             <div class="lemma-group-header">
@@ -470,14 +550,19 @@
                 ${g.language}
                 ${
                   g.language_prefix
-                    ? `&nbsp;<span style="font-weight:400;color:#9ca3af;">(${g.language_prefix})</span>`
+                    ? \`&nbsp;<span style="font-weight:400;color:#9ca3af;">(\${g.language_prefix})</span>\`
                     : ""
                 }
               </div>
-              <div class="lemma-count">${lemmasText.length} lemma(s)</div>
+              <div class="lemma-count">${
+                g.count || g.lemmas.length
+              } lemma(s)</div>
             </div>
             <div class="lemma-list">
               ${lemmasText
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
                 .map((lemma) => `<span>${lemma}</span>`)
                 .join("")}
             </div>
