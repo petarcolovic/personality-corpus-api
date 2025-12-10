@@ -361,32 +361,111 @@
       }
     }
 
-    async function loadKernels() {
-      try {
-        const kernels = await fetchJSON(`${API_BASE}/kernels`);
-        if (!Array.isArray(kernels) || kernels.length === 0) {
-          kernelSelect.innerHTML =
-            '<option value="">No kernels found</option>';
-          return;
-        }
+    <script>
+  const API_BASE = "https://personality-corpus-api-production.up.railway.app";
 
-        kernelSelect.innerHTML =
-          '<option value="">Choose a kernel…</option>';
+  const kernelSelect = document.getElementById("kernel-select");
+  const languageSelect = document.getElementById("language-select");
+  const searchBtn = document.getElementById("search-btn");
+  const errorEl = document.getElementById("error");
+  const resultsEl = document.getElementById("results");
+  const resultsMetaEl = document.getElementById("results-meta");
+  const resultsBodyEl = document.getElementById("results-body");
 
-        kernels.forEach((k) => {
-          const opt = document.createElement("option");
-          const word = k.kernel_word || k.kernel || k.word || "";
-          const count = k.n_lemmas ?? k.lemma_count ?? k.count ?? "";
-          opt.value = word;
-          opt.textContent = count ? `${word} (${count})` : word;
-          kernelSelect.appendChild(opt);
-        });
-      } catch (err) {
-        showError("Error loading kernels. " + err.message);
-        kernelSelect.innerHTML =
-          '<option value="">Error loading kernels</option>';
-      }
+  function showError(message) {
+    console.error("[Concept Viewer error]", message);
+    errorEl.textContent = message;
+    errorEl.style.display = "block";
+    resultsEl.style.display = "none";
+  }
+
+  function clearError() {
+    errorEl.textContent = "";
+    errorEl.style.display = "none";
+  }
+
+  async function fetchJSON(url) {
+    console.log("FETCH:", url);
+    const response = await fetch(url);
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(
+        `Request to ${url} failed with ${response.status}: ${text || "No body"}`
+      );
     }
+    return response.json();
+  }
+
+  async function loadLanguages() {
+    try {
+      const languages = await fetchJSON(`${API_BASE}/languages`);
+      languageSelect.innerHTML =
+        '<option value="">All languages</option>';
+
+      languages.forEach((lang) => {
+        const opt = document.createElement("option");
+        opt.value = lang.prefix || lang.iso || lang.iso_639_1 || "";
+        opt.textContent = lang.name || opt.value || "Unknown";
+        languageSelect.appendChild(opt);
+      });
+    } catch (err) {
+      showError("Error loading languages. " + err.message);
+    }
+  }
+
+  // 🔧 NOVA VERZIJA
+  async function loadKernels() {
+    try {
+      const raw = await fetchJSON(`${API_BASE}/kernels`);
+
+      // Pokušaj da izvučemo listu kernela bez obzira kako je API nazvao polje
+      let kernels = [];
+      if (Array.isArray(raw)) {
+        kernels = raw;
+      } else if (raw && typeof raw === "object") {
+        if (Array.isArray(raw.results)) kernels = raw.results;
+        else if (Array.isArray(raw.items)) kernels = raw.items;
+        else if (Array.isArray(raw.data)) kernels = raw.data;
+        else if (Array.isArray(raw.kernels)) kernels = raw.kernels;
+        else {
+          // poslednja šansa – prvi property koji je niz
+          for (const value of Object.values(raw)) {
+            if (Array.isArray(value)) {
+              kernels = value;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!kernels || kernels.length === 0) {
+        kernelSelect.innerHTML =
+          '<option value="">No kernels found</option>';
+        return;
+      }
+
+      kernelSelect.innerHTML =
+        '<option value="">Choose a kernel…</option>';
+
+      kernels.forEach((k) => {
+        const opt = document.createElement("option");
+        const word = k.kernel_word || k.kernel || k.word || k.term || "";
+        const count = k.n_lemmas ?? k.lemma_count ?? k.count ?? k.n ?? "";
+
+        opt.value = word;
+        opt.textContent = count ? `${word} (${count})` : word || "(no label)";
+        kernelSelect.appendChild(opt);
+      });
+    } catch (err) {
+      showError("Error loading kernels. " + err.message);
+      kernelSelect.innerHTML =
+        '<option value="">Error loading kernels</option>';
+    }
+  }
+
+  // sve ostalo (searchLemmas, DOMContentLoaded...) ostaje isto
+</script>
+
 
     async function searchLemmas() {
       clearError();
